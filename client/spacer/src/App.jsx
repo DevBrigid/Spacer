@@ -29,6 +29,8 @@ import ManageSpaces from './pages/admin/ManageSpaces';
 import AdminProfile from './pages/admin/AdminProfile';
 
 import './App.css'
+import ClientLayout from './layouts/ClientLayout';
+import AdminLayout from './layouts/AdminLayout';
 
 function App() {
   const dispatch = useDispatch();
@@ -53,28 +55,32 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
-        <Route path='/' element={<LandingPage/>} />
-        <Route path='/spaces' element={<BrowsePage/>} />
-        <Route path='/spaces/:id' element={<SpaceDetails/>} />
-        <Route path='/login' element={<LoginPage/>} />
-        <Route path='/register' element={<RegisterPage/>} />
-        <Route path='/forgot-password' element={<ForgotPasswordPage/>} />
+        <Route element={<ClientLayout />}>
+          <Route path='/' element={<LandingPage/>} />
+          <Route path='/spaces' element={<BrowsePage/>} />
+          <Route path='/spaces/:id' element={<SpaceDetails/>} />
+          <Route path='/login' element={<LoginPage/>} />
+          <Route path='/register' element={<RegisterPage/>} />
+          <Route path='/forgot-password' element={<ForgotPasswordPage/>} />
+        
 
-        {/* Client - login required */}
-        <Route path='/spacer' element={<PrivateRoute><ClientDashboard/></PrivateRoute>}/>
-        <Route path='/spacer/profile' element={<PrivateRoute><ClientProfile/></PrivateRoute>}/>
-        <Route path='/spacer/bookings' element={<PrivateRoute><MyBookings/></PrivateRoute>}/>
-        <Route path='/spacer/booking/:spacerId' element={<PrivateRoute><BookingPage/></PrivateRoute>}/>
-        <Route path='/spacer/agreement' element={<PrivateRoute><AgreementPage/></PrivateRoute>}/>
-        <Route path='/spacer/payment' element={<PrivateRoute><PaymentPage/></PrivateRoute>}/>
+          {/* Client - login required */}
+          <Route path='/spacer' element={<PrivateRoute><ClientDashboard/></PrivateRoute>}/>
+          <Route path='/spacer/profile' element={<PrivateRoute><ClientProfile/></PrivateRoute>}/>
+          <Route path='/spacer/bookings' element={<PrivateRoute><MyBookings/></PrivateRoute>}/>
+          <Route path='/spacer/booking/:spacerId' element={<PrivateRoute><BookingPage/></PrivateRoute>}/>
+          <Route path='/spacer/agreement' element={<PrivateRoute><AgreementPage/></PrivateRoute>}/>
+          <Route path='/spacer/payment' element={<PrivateRoute><PaymentPage/></PrivateRoute>}/>
+        </Route>
 
         {/* Admin - admin role required */}
-        <Route path='/admin' element={<AdminRoute><AdminDashBoard/></AdminRoute>}/>
-        <Route path='/admin/spaces' element={<AdminRoute><ManageSpaces/></AdminRoute>}/>
-        <Route path='/admin/users' element={<AdminRoute><ManageUsers/></AdminRoute>}/>
-        <Route path='/admin/bookings' element={<AdminRoute><BookingHistory/></AdminRoute>}/>
-        <Route path='admin/profile' element={<AdminRoute><AdminProfile/></AdminRoute>}/>
-
+        <Route path='/admin' element={<AdminRoute><AdminLayout/></AdminRoute>}>
+          <Route index element={<AdminDashBoard/>}/>
+          <Route path='/admin/spaces' element={<AdminRoute><ManageSpaces/></AdminRoute>}/>
+          <Route path='/admin/users' element={<AdminRoute><ManageUsers/></AdminRoute>}/>
+          <Route path='/admin/bookings' element={<AdminRoute><BookingHistory/></AdminRoute>}/>
+          <Route path='admin/profile' element={<AdminRoute><AdminProfile/></AdminRoute>}/>
+        </Route>
       </Routes>
     </BrowserRouter>
   );
