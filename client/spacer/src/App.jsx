@@ -1,3 +1,8 @@
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+
+import { loadUserFromStorage } from './store/authSlice';
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import PrivateRoute from './routes/PrivateRoute';
 import AdminRoute from './routes/AdminRoute';
@@ -26,7 +31,24 @@ import AdminProfile from './pages/admin/AdminProfile';
 import './App.css'
 
 function App() {
-  
+  const dispatch = useDispatch();
+  const { token, authChecked, fetchCurrentUser } = useSelector((state) => state.auth);
+
+  //restore session on app load
+  useEffect(() => {
+    dispatch(loadUserFromStorage());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (token) {
+      dispatch(fetchCurrentUser());
+    }
+  }, [token, dispatch, fetchCurrentUser]);
+
+  if (!authChecked && localStorage.getItem('token')) {
+    return <p>Loading...</p>
+  }
+
   return (
     <BrowserRouter>
       <Routes>
