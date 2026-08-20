@@ -5,7 +5,16 @@ export const fetchSpaces = createAsyncThunk(
     'spaces/fetchAll',
     async () => {
         const res = await fetch('http://localhost:3001/spaces');
-        return res.json();
+        const data = await res.json();
+        return data.map((s) => ({
+            id: s.id,
+            name: s.name,
+            location: s.location,
+            pricePerHour: s.price_per_hour,
+            capacity: s.capacity,
+            description: s.description,
+            status: s.status.charAt(0).toUpperCase() + s.status.slice(1), // "available" → "Available"
+        }))
     }
 );
 
@@ -22,12 +31,25 @@ export const fetchSpaceById = createAsyncThunk(
 const spaceSlice = createSlice({
     name: 'spaces',
     intialState: {
-        list: [],
+        spaces: [],
         selectedSpace: null,
         status: 'idle', 
         error: null,
     },
-    reducers: {}, //no manual reducers needed - thunks handle everything below
+    reducers: {
+        addSpace: (state, action) => {
+            state.spaces.push({ id: Date.now(), ...action.payload });
+        },
+        updateSpace: (state, action) => {
+            const { id, ...updates } = action.payload;
+            const space = state.spaces.find((s) => s.id === id);
+            if (space) Object.assign(space, updates);
+        },
+        deleteSpace: (state, action) => {
+            state.spaces = state.spaces.filter((s) => s.id !== action.payload);
+        },
+    },
+    
     extraReducers: (builder) => {
        builder
        //fetchSpaces lifecycle
@@ -36,7 +58,7 @@ const spaceSlice = createSlice({
        }) 
        .addCase(fetchSpaces.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.list = action.payload;
+        state.spaces = action.payload;
        })
        .addCase(fetchSpaces.rejected, (state, action) => {
         state.status = 'rejected';
@@ -49,4 +71,5 @@ const spaceSlice = createSlice({
     },
 });
 
+export const { addSpace,updateSpace, deleteSpace } = spaceSlice.actions;
 export default spaceSlice.reducer;

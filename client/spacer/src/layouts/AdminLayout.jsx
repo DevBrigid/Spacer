@@ -1,9 +1,9 @@
 import { Outlet } from "react-router-dom";
-import AdminSideBar from '../components/AdminSideBar';
+import AdminSideBar from '../components/AdminSidebar';
 
 function AdminLayout() {
     return (
-        <div style={{ display: 'flex '}}>
+        <div style={{ display: 'flex'}}>
             <AdminSideBar />
             <main style={{ flex: 1, padding: '20px' }}>
                 <Outlet />

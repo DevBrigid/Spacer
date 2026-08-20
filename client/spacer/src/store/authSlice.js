@@ -39,6 +39,27 @@ export const loginUser = createAsyncThunk(
     }
 );
 
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().auth.token;
+      const res = await fetch(`${API_URL}/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData),
+      });
+      if (!res.ok) throw new Error('Failed to update profile');
+      return await res.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const fetchCurrentUser = createAsyncThunk(
     'auth/fetchCurrentUser',
     async (_, { getState, rejectWithValue}) => {
@@ -138,6 +159,11 @@ const authSlice = createSlice({
             state.isAuthenticated = false;
             state.authChecked = true;
             localStorage.removeItem('token');
+        })
+        //update Profile
+        .addCase(updateProfile.fulfilled, (state, action) => {
+            state.currentUser = action.payload;
+            state.status = 'succeeded';
         });
     },
 });
