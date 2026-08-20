@@ -8,6 +8,7 @@ const bookingsSlice = createSlice({
         endTime: null,
         durationHours: 0,
         totalAmount: 0,
+        signedAt: null,
         bookingStatus: 'idle'
     },
     reducers: {
@@ -34,6 +35,9 @@ const bookingsSlice = createSlice({
             state.durationHours = 0;
             state.totalAmount = 0;
             state.bookingStatus = 'idle';
+        },
+        signAgreement: (state) => {
+            state.signedAt = new Date().toISOString();
         },
     },
 });
