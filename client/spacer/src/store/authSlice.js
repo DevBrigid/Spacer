@@ -39,6 +39,25 @@ export const loginUser = createAsyncThunk(
     }
 );
 
+export const fetchCurrentUser = createAsyncThunk(
+    'auth/fetchCurrentUser',
+    async (_, { getState, rejectWithValue}) => {
+        try{
+            const token = getState().auth.token;
+            const res = await fetch(`${API_URL}/me`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if(!res.ok) throw new Error('Session Expired');
+            const user = await res.json;
+            return user;
+        } catch(error) {
+            return rejectWithValue(error.message);
+        }
+    }
+)
+
 
 const authSlice = createSlice({
     name: 'auth',
@@ -46,6 +65,7 @@ const authSlice = createSlice({
         currentUser: null,
         token: null,
         isAuthenticated: false,
+        authChecked: false, //tracks whether we've finished checking for a saved session
         status: 'idle', //idle | loading | failed
         error: null,
     },
@@ -99,6 +119,25 @@ const authSlice = createSlice({
         .addCase(loginUser.rejected, (state, action) => {
             state.status = 'failed';
             state.error = action.payload;
+        })
+        //fetchCurrentUser
+        .addCase(fetchCurrentUser.pending, (state) => {
+            state.status = 'loading';
+        })
+        .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+            state.status = 'succeeded';
+            state.currentUser = action.payload;
+            state.isAuthenticated = true;
+            state.authChecked = true;
+        })
+        .addCase(fetchCurrentUser.rejected, (state) => {
+        // token was invalid/expired — clear everything
+            state.status = 'failed';
+            state.currentUser = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.authChecked = true;
+            localStorage.removeItem('token');
         });
     },
 });
