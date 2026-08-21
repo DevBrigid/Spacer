@@ -1,185 +1,267 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const booking = location.state?.booking;
+  const booking = location.state?.booking || {
+    title: "The Creative Loft",
+    location: "254 Building, Westlands, Nairobi",
+    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop",
+    date: "August 24, 2026",
+    duration: "10:00 AM - 3:00 PM",
+    subtotal: 25000,
+    serviceFee: 1500,
+    estimatedTax: 3440,
+    totalDue: 29940
+  };
 
-  const [paymentMethod, setPaymentMethod] = useState('mpesa');
-  const [phoneNumber, setPhoneNumber] = useState('254700000000');
+  const [paymentMethod, setPaymentMethod] = useState('mpesa'); // 'mpesa' | 'saved' | 'card'
+  const [phoneNumber, setPhoneNumber] = useState('254712345678');
+  const [cardNumber, setCardNumber] = useState('2302 8893 9400 0000');
+  const [expiration, setExpiration] = useState('08/28');
+  const [cvv, setCvv] = useState('321');
+  const [streetAddress, setStreetAddress] = useState('Street Address, Apt, Suite');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isPaid, setIsPaid] = useState(false);
 
-  if (!booking) {
-    return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <h3>No booking selected for payment.</h3>
-        <button onClick={() => navigate('/client/my-bookings')} className="sp-btn-black" style={{ marginTop: '16px' }}>
-          Back to My Bookings
-        </button>
-      </div>
-    );
-  }
-
-  const handlePayNow = (e) => {
+  const handlePay = (e) => {
     e.preventDefault();
     setIsProcessing(true);
 
     setTimeout(() => {
-      setIsProcessing(false);
-      setIsPaid(true);
+      const savedBookings = JSON.parse(localStorage.getItem('spacer_bookings') || '[]');
+      const updatedBookings = savedBookings.map(b => b.id === booking.id ? { ...b, status: 'Paid' } : b);
+      localStorage.setItem('spacer_bookings', JSON.stringify(updatedBookings));
 
-      // Update status in localStorage
-      const existing = JSON.parse(localStorage.getItem('spacer_bookings') || '[]');
-      const updated = existing.map((item) =>
-        item.id === booking.id ? { ...item, status: 'Paid' } : item
-      );
-      localStorage.setItem('spacer_bookings', JSON.stringify(updated));
-    }, 1500);
+      setIsProcessing(false);
+      if (paymentMethod === 'mpesa') {
+        alert(`STK Push sent to ${phoneNumber}! Enter your M-Pesa PIN on your phone to complete payment.`);
+      } else {
+        alert('Payment Successful!');
+      }
+      navigate('/client/my-bookings');
+    }, 1200);
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', backgroundColor: '#f9fafb' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
       <div>
-        <header className="sp-header" style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb' }}>
-          <span className="sp-logo" onClick={() => navigate('/client/dashboard')}>SPACER</span>
-          <div className="sp-nav">
-            <Link to="/client/dashboard" className="sp-nav-link">Dashboard</Link>
-            <Link to="/client/booking" className="sp-nav-link">Booking Page</Link>
-            <Link to="/client/my-bookings" className="sp-nav-link">My Bookings</Link>
-            <button onClick={() => navigate('/')} className="sp-btn-black">Logout</button>
-          </div>
+        <header className="sp-header" style={{ borderBottom: '1px solid #e5e7eb', padding: '16px 64px' }}>
+          <span className="sp-logo" onClick={() => navigate('/client/dashboard')} style={{ fontWeight: '800', cursor: 'pointer', fontSize: '18px' }}>SPACER</span>
         </header>
 
-        <main className="sp-container">
-          <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: '800' }}>Checkout & Payment</h1>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Complete your transaction for Booking #{booking.id}</p>
-          </div>
+        <main className="sp-container" style={{ maxWidth: '1140px', margin: '40px auto', padding: '0 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '48px' }}>
+            
+            {/* Payment Options Column */}
+            <div>
+              <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '4px' }}>Secure Checkout</h1>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '28px' }}>Complete your booking reservation with encrypted payment.</p>
 
-          <div className="sp-layout-split" style={{ gridTemplateColumns: '1.5fr 1fr', gap: '32px' }}>
-            <div className="sp-card" style={{ background: '#ffffff', padding: '24px', borderRadius: '12px' }}>
-              {isPaid ? (
-                <div style={{ textAlign: 'center', padding: '30px 10px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-                  <h2 style={{ fontSize: '22px', fontWeight: '800' }}>Payment Successful!</h2>
-                  <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '6px', marginBottom: '24px' }}>
-                    Your payment of <b>KES {booking.totalDue?.toLocaleString()}</b> was confirmed.
-                  </p>
-                  <button onClick={() => navigate('/client/my-bookings')} className="sp-btn-black" style={{ padding: '12px 24px' }}>
-                    View Updated Bookings →
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handlePayNow}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px' }}>Select Payment Method</h3>
-
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('mpesa')}
-                      style={{
-                        flex: 1,
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: paymentMethod === 'mpesa' ? '2px solid #000' : '1px solid #e5e7eb',
-                        background: paymentMethod === 'mpesa' ? '#000' : '#fff',
-                        color: paymentMethod === 'mpesa' ? '#fff' : '#000',
-                        fontWeight: '700',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      M-Pesa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('card')}
-                      style={{
-                        flex: 1,
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: paymentMethod === 'card' ? '2px solid #000' : '1px solid #e5e7eb',
-                        background: paymentMethod === 'card' ? '#000' : '#fff',
-                        color: paymentMethod === 'card' ? '#fff' : '#000',
-                        fontWeight: '700',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Credit / Debit Card
-                    </button>
+              {/* Payment Method Selector */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: '#374151' }}>Select Payment Method</span>
+                
+                {/* M-Pesa Option */}
+                <div 
+                  onClick={() => setPaymentMethod('mpesa')}
+                  style={{ 
+                    border: paymentMethod === 'mpesa' ? '2px solid #059669' : '1px solid #e5e7eb', 
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    display: 'flex', 
+                    justify: 'space-between', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    backgroundColor: paymentMethod === 'mpesa' ? '#f0fdf4' : '#ffffff'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '26px', background: '#059669', color: '#ffffff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '10px' }}>
+                      M-PESA
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>Lipa na M-PESA</p>
+                      <p style={{ fontSize: '11px', color: '#6b7280' }}>Instant Express Prompt (STK Push)</p>
+                    </div>
                   </div>
+                  <input type="radio" checked={paymentMethod === 'mpesa'} readOnly />
+                </div>
 
-                  {paymentMethod === 'mpesa' ? (
-                    <div className="sp-field" style={{ marginBottom: '24px' }}>
-                      <label className="sp-label">M-Pesa Phone Number</label>
-                      <input
-                        type="text"
-                        className="sp-input"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="e.g. 254712345678"
-                        required
+                {/* Saved Card Option */}
+                <div 
+                  onClick={() => setPaymentMethod('saved')}
+                  style={{ 
+                    border: paymentMethod === 'saved' ? '2px solid #000' : '1px solid #e5e7eb', 
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    display: 'flex', 
+                    justify: 'space-between', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    backgroundColor: paymentMethod === 'saved' ? '#f9fafb' : '#ffffff'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '26px', background: '#e5e7eb', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '10px' }}>
+                      VISA
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '700' }}>Visa ending in 4242</p>
+                      <p style={{ fontSize: '11px', color: '#6b7280' }}>Expires 08/28</p>
+                    </div>
+                  </div>
+                  <input type="radio" checked={paymentMethod === 'saved'} readOnly />
+                </div>
+
+                {/* New Card Option */}
+                <div 
+                  onClick={() => setPaymentMethod('card')}
+                  style={{ 
+                    border: paymentMethod === 'card' ? '2px solid #000' : '1px solid #e5e7eb', 
+                    padding: '16px', 
+                    borderRadius: '8px', 
+                    display: 'flex', 
+                    justify: 'space-between', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    backgroundColor: paymentMethod === 'card' ? '#f9fafb' : '#ffffff'
+                  }}
+                >
+                  <span style={{ fontSize: '13px', fontWeight: '700' }}>Credit or Debit Card</span>
+                  <input type="radio" checked={paymentMethod === 'card'} readOnly />
+                </div>
+              </div>
+
+              {/* Form Inputs */}
+              <form onSubmit={handlePay} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {paymentMethod === 'mpesa' && (
+                  <div style={{ border: '1px solid #d1fae5', padding: '20px', borderRadius: '8px', backgroundColor: '#f0fdf4' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#065f46', marginBottom: '6px' }}>M-Pesa Phone Number</label>
+                    <input 
+                      type="text" 
+                      value={phoneNumber} 
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="e.g. 254712345678"
+                      required
+                      style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #a7f3d0', fontSize: '14px', fontWeight: '600', boxSizing: 'border-box' }}
+                    />
+                    <p style={{ fontSize: '11px', color: '#047857', marginTop: '6px' }}>A prompt will be sent to this mobile device to enter your PIN.</p>
+                  </div>
+                )}
+
+                {paymentMethod === 'card' && (
+                  <>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Card number</label>
+                      <input 
+                        type="text" 
+                        value={cardNumber} 
+                        onChange={(e) => setCardNumber(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}
                       />
-                      <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
-                        An STK push prompt will be sent to this phone number.
-                      </span>
                     </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-                      <div className="sp-field">
-                        <label className="sp-label">Card Number</label>
-                        <input type="text" className="sp-input" placeholder="4532 •••• •••• 8892" required />
-                      </div>
-                      <div style={{ display: 'flex', gap: '16px' }}>
-                        <div className="sp-field" style={{ flex: 1 }}>
-                          <label className="sp-label">Expiry Date</label>
-                          <input type="text" className="sp-input" placeholder="MM/YY" required />
-                        </div>
-                        <div className="sp-field" style={{ flex: 1 }}>
-                          <label className="sp-label">CVV</label>
-                          <input type="text" className="sp-input" placeholder="123" required />
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    className="sp-btn-black"
-                    disabled={isProcessing}
-                    style={{ width: '100%', padding: '16px', fontSize: '15px', fontWeight: '800' }}
-                  >
-                    {isProcessing ? 'Processing Payment...' : `PAY KES ${booking.totalDue?.toLocaleString()} NOW →`}
-                  </button>
-                </form>
-              )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Expiration date</label>
+                        <input 
+                          type="text" 
+                          value={expiration} 
+                          onChange={(e) => setExpiration(e.target.value)}
+                          placeholder="MM / YY"
+                          style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>CVC</label>
+                        <input 
+                          type="text" 
+                          value={cvv} 
+                          onChange={(e) => setCvv(e.target.value)}
+                          placeholder="CVC"
+                          style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Billing Address</label>
+                      <input 
+                        type="text" 
+                        value={streetAddress} 
+                        onChange={(e) => setStreetAddress(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={isProcessing}
+                  style={{ 
+                    backgroundColor: paymentMethod === 'mpesa' ? '#059669' : '#000000', 
+                    color: '#ffffff', 
+                    padding: '14px', 
+                    borderRadius: '6px', 
+                    fontWeight: '700', 
+                    fontSize: '14px', 
+                    border: 'none', 
+                    cursor: 'pointer', 
+                    marginTop: '8px' 
+                  }}
+                >
+                  {isProcessing ? 'Processing...' : paymentMethod === 'mpesa' ? `Pay via M-PESA (KES ${booking.totalDue?.toLocaleString()})` : `Pay Now (KES ${booking.totalDue?.toLocaleString()})`}
+                </button>
+              </form>
             </div>
 
+            {/* Summary Column */}
             <div>
-              <div className="sp-card" style={{ background: '#ffffff', padding: '24px', borderRadius: '12px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '14px' }}>Order Summary</h3>
-                <img src={booking.image} alt={booking.title} style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', marginBottom: '12px' }} />
-                <h4 style={{ fontSize: '16px', fontWeight: '800' }}>{booking.title}</h4>
-                <p style={{ color: '#6b7280', fontSize: '12px', marginBottom: '16px' }}>{booking.location}</p>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '24px', backgroundColor: '#ffffff' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Order Summary</h3>
+                
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                  <img src={booking.image} alt="Thumbnail" style={{ width: '64px', height: '64px', borderRadius: '6px', objectFit: 'cover' }} />
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700' }}>{booking.title}</h4>
+                    <p style={{ fontSize: '11px', color: '#6b7280' }}>{booking.location}</p>
+                  </div>
+                </div>
 
-                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
-                  <div className="sp-row"><span>Date</span><b>{booking.date}</b></div>
-                  <div className="sp-row"><span>Duration</span><b>{booking.duration}</b></div>
-                  <div className="sp-row sp-row-total" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                    <span>Amount Due</span>
+                <div style={{ fontSize: '12px', color: '#374151', marginBottom: '16px', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>
+                  <strong>Reservation:</strong><br />
+                  <span>{booking.date} ({booking.duration})</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6b7280' }}>
+                    <span>Subtotal</span>
+                    <span>KES {booking.subtotal?.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6b7280' }}>
+                    <span>Service fee</span>
+                    <span>KES {booking.serviceFee?.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6b7280' }}>
+                    <span>Estimated Tax</span>
+                    <span>KES {booking.estimatedTax?.toLocaleString()}</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '14px', color: '#000' }}>
+                    <span>Total Due</span>
                     <span>KES {booking.totalDue?.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </div>
+
           </div>
         </main>
       </div>
 
-      <footer className="sp-footer" style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e5e7eb' }}>
-        <span className="sp-logo" style={{ fontSize: '16px' }}>Spacer ®</span>
-        <div className="sp-footer-text">Connecting people with open space and like-minded people.</div>
+      <footer className="sp-footer" style={{ borderTop: '1px solid #e5e7eb', padding: '24px 64px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="sp-logo" style={{ fontSize: '14px', fontWeight: '800' }}>Spacer ®</span>
       </footer>
     </div>
   );
