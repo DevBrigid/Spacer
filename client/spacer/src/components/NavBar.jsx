@@ -5,20 +5,13 @@ function Navbar() {
   const { isAuthenticated, currentUser } = useSelector((state) => state.auth);
 
   return (
-    <nav>
-      <Link to="/">Spacer</Link>
-      <Link to="/browse">Browse</Link>
-      {isAuthenticated ? (
-        <>
-          <Link to="/client/bookings">My Bookings</Link>
-          <Link to="/client/profile">{currentUser?.name}</Link>
-        </>
-      ) : (
-        <>
-          <Link to="/login">Log In</Link>
-          <Link to="/register">Sign Up</Link>
-        </>
-      )}
+    <nav className="public-nav">
+      <Link className="nav-brand" to="/">SPACER</Link>
+      <div className="nav-links">
+        <Link to="/">Home Page</Link>
+        <Link to="/spaces">Browse Spaces</Link>
+        {isAuthenticated ? <Link className="nav-auth" to="/profile">{currentUser?.name || 'Account'}</Link> : <Link className="nav-auth" to="/login">LOGIN / REGISTER</Link>}
+      </div>
     </nav>
   );
 }

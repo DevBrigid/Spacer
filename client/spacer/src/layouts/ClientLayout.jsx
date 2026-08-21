@@ -3,9 +3,9 @@ import Navbar from "../components/NavBar";
 
 function ClientLayout() {
     return (
-        <div>
+        <div className="app-shell">
             <Navbar />
-            <main style={{ padding: '20px' }}>
+            <main className="public-main">
                 <Outlet />
             </main>
         </div>
