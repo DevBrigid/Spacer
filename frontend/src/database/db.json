@@ -1,0 +1,113 @@
+{
+  "spaces": [
+    {
+      "id": "1",
+      "owner_id": 1,
+      "name": "Sunset Rooftop Lounge",
+      "description": "Open-air rooftop space perfect for evening events and meetups.",
+      "location": "Westlands, Nairobi",
+      "latitude": -1.2672,
+      "longitude": 36.8065,
+      "price_per_hour": 1500,
+      "price_per_day": 9000,
+      "capacity": 40,
+      "status": "available",
+      "images": "https://images.unsplash.com/photo-1517457373958-b7bdd4587205"
+    },
+    {
+      "id": "2",
+      "owner_id": 1,
+      "name": "Karen Garden Studio",
+      "description": "Quiet garden studio ideal for workshops and small gatherings.",
+      "location": "Karen, Nairobi",
+      "latitude": -1.3197,
+      "longitude": 36.7076,
+      "price_per_hour": 1200,
+      "price_per_day": 7000,
+      "capacity": 15,
+      "status": "booked",
+      "images": [
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c"
+      ]
+    },
+    {
+      "id": "3",
+      "owner_id": 2,
+      "name": "CBD Conference Hub",
+      "description": "Professional conference room with projector and whiteboard.",
+      "location": "Nairobi CBD",
+      "latitude": -1.2864,
+      "longitude": 36.8172,
+      "price_per_hour": 2000,
+      "price_per_day": 12000,
+      "capacity": 25,
+      "status": "available",
+      "images": [
+        "https://images.unsplash.com/photo-1497366216548-37526070297c"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "1",
+      "name": "Brigid Owuor",
+      "email": "brigid@example.com",
+      "phone_number": "+254712345678",
+      "password": "password123",
+      "role": "Admin",
+      "status": "Active"
+    },
+    {
+      "id": "2",
+      "name": "James Mwangi",
+      "email": "james@example.com",
+      "phone_number": "+254722334455",
+      "password": "password123",
+      "role": "Admin",
+      "status": "Inactive"
+    },
+    {
+      "id": "3",
+      "name": "Aisha Kamau",
+      "email": "aisha@example.com",
+      "phone_number": "+254733445566",
+      "password": "password123",
+      "role": "Client",
+      "status": "Active"
+    },
+    {
+      "id": "vt666zmGnSQ",
+      "name": "Brigid",
+      "email": "mukamibrigid20@gmail.com",
+      "phone_number": "+254114999389",
+      "password": "brisky123",
+      "role": "Client",
+      "status": "Active"
+    }
+  ],
+  "bookings": [
+    {
+      "id": "1",
+      "space_id": 2,
+      "space_name": "Karen Garden Studio",
+      "user_id": 3,
+      "start_time": "2026-08-22T10:00:00",
+      "end_time": "2026-08-22T13:00:00",
+      "duration_hours": 3,
+      "total_amount": 3600,
+      "status": "confirmed"
+    }
+  ],
+  "payments": [
+    {
+      "id": "1",
+      "booking_id": 1,
+      "amount": 3600,
+      "merchant_request_id": "fake-merchant-001",
+      "checkout_request_id": "fake-checkout-001",
+      "status": "success",
+      "result_desc": "The service request has been accepted successfully.",
+      "paid_at": "2026-08-22T09:55:00"
+    }
+  ]
+}
