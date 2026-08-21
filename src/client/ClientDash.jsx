@@ -21,7 +21,7 @@ const ClientDash = () => {
           <span className="sp-logo" onClick={() => navigate('/client/dashboard')}>SPACER</span>
           <div className="sp-nav">
             <Link to="/client/dashboard" className="sp-nav-link" style={{ fontWeight: '700', color: '#000000' }}>Dashboard</Link>
-            <Link to="/client/booking" className="sp-nav-link">Browse Spaces</Link>
+            <Link to="/client/booking" className="sp-nav-link">Booking-page</Link>
             <Link to="/client/my-bookings" className="sp-nav-link">My Bookings</Link>
             <button onClick={() => navigate('/')} className="sp-btn-black">Logout</button>
           </div>

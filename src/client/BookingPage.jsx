@@ -1,33 +1,44 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
-const BookingPage = () => {
+const DEFAULT_SPACES = [
+  { id: '1', name: 'The Creative Loft - Studio B', location: 'GTC Building, Westlands, Nairobi', price_per_hour: 5000, capacity: 10, images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop'] },
+  { id: '2', name: 'Innovation Hub - Suite 402', location: 'Kilimani, Nairobi', price_per_hour: 4200, capacity: 8, images: ['https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?q=80&w=600&auto=format&fit=crop'] },
+  { id: '3', name: 'Executive Conference Hall', location: 'CBD, Nairobi', price_per_hour: 7500, capacity: 25, images: ['https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=600&auto=format&fit=crop'] }
+];
+
+const formatPrice = (price) => new Intl.NumberFormat('en-KE').format(price || 0);
+
+export default function BookingPage() {
+  const { spacerId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  
-  const [selectedDate, setSelectedDate] = useState('2026-08-24');
-  const [durationHours, setDurationHours] = useState(5);
 
-  const hourlyRate = 5000;
-  const subtotal = hourlyRate * durationHours;
-  const serviceFee = 1500;
-  const estimatedTax = 3440;
+  const space = DEFAULT_SPACES.find((item) => String(item.id) === String(spacerId)) || DEFAULT_SPACES[0];
+  const [startTime, setStartTime] = useState(location.state?.startTime || '');
+  const [endTime, setEndTime] = useState(location.state?.endTime || '');
+
+  const durationHours = useMemo(() => {
+    const duration = (new Date(endTime) - new Date(startTime)) / 3_600_000;
+    return startTime && endTime && duration > 0 ? duration : 0;
+  }, [endTime, startTime]);
+
+  const subtotal = durationHours * (space?.price_per_hour || 0);
+  const serviceFee = Math.round(subtotal * 0.05);
+  const estimatedTax = Math.round((subtotal + serviceFee) * 0.16);
   const totalDue = subtotal + serviceFee + estimatedTax;
 
-  const spaceDetails = {
-    id: 101,
-    title: "The Creative Loft - Studio B",
-    location: "254 Building, Westlands, Nairobi",
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop",
-    description: "Studio B offers a beautifully sunlit space, curated specifically for designers, creators, and teams. Built with premium furniture, adjustable heights, high-speed fiber internet, and complimentary local coffee. Enjoy complete private access to the proofing room and audio corner.",
-    amenities: ["High-Speed Wi-Fi", "Ergonomic Desks", "Local Coffee", "Audio Corner", "Proofing Room"]
-  };
+  const continueToPayment = (event) => {
+    event.preventDefault();
+    if (!durationHours) return;
 
-  const handleConfirmBooking = () => {
-    const bookingPayload = {
-      ...spaceDetails,
-      date: selectedDate,
-      duration: `${durationHours} Hours (10:00 AM - 3:00 PM)`,
-      hours: durationHours,
+    const newBooking = {
+      spaceId: space.id,
+      title: space.name,
+      location: space.location,
+      startTime,
+      endTime,
+      duration: `${durationHours} Hours`,
       subtotal,
       serviceFee,
       estimatedTax,
@@ -35,121 +46,88 @@ const BookingPage = () => {
       status: 'Pending'
     };
 
-    const existingBookings = JSON.parse(localStorage.getItem('spacer_bookings') || '[]');
-    localStorage.setItem('spacer_bookings', JSON.stringify([bookingPayload, ...existingBookings]));
+    const savedBookings = JSON.parse(localStorage.getItem('spacer_bookings') || '[]');
+    localStorage.setItem('spacer_bookings', JSON.stringify([newBooking, ...savedBookings]));
 
-    navigate('/client/payment', { state: { booking: bookingPayload } });
+    navigate('/spacer/payment');
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
-      <div>
-        <header className="sp-header" style={{ borderBottom: '1px solid #e5e7eb', padding: '16px 64px' }}>
-          <span className="sp-logo" onClick={() => navigate('/client/dashboard')} style={{ fontWeight: '800', cursor: 'pointer', fontSize: '18px' }}>SPACER</span>
-          <div className="sp-nav" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-            <Link to="/client/dashboard" className="sp-nav-link" style={{ textDecoration: 'none', color: '#000' }}>Dashboard</Link>
-            <Link to="/client/booking" className="sp-nav-link" style={{ textDecoration: 'none', color: '#000', fontWeight: '700' }}>Booking</Link>
-            <Link to="/client/my-bookings" className="sp-nav-link" style={{ textDecoration: 'none', color: '#000' }}>My Bookings</Link>
-            <button onClick={() => navigate('/')} className="sp-btn-black" style={{ background: '#000', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>Logout</button>
-          </div>
-        </header>
+    <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 24px', fontFamily: 'sans-serif' }}>
+      <Link to={`/spaces/${space.id}`} style={{ fontSize: '13px', fontWeight: '600', color: '#525252', textDecoration: 'none' }}>
+        ← Back to space
+      </Link>
 
-        <main className="sp-container" style={{ maxWidth: '1140px', margin: '40px auto', padding: '0 20px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '48px' }}>
-            
-            {/* Left Column: Details */}
-            <div>
-              <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '4px' }}>{spaceDetails.title}</h1>
-              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '24px' }}>{spaceDetails.location}</p>
+      <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '32px' }}>
+        <section>
+          <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', color: '#737373', margin: 0 }}>
+            Reserve your space
+          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0a0a0a', marginTop: '8px', marginBottom: '8px' }}>
+            Confirm your booking
+          </h1>
+          <p style={{ fontSize: '14px', color: '#525252', lineHeight: '1.5', margin: 0 }}>
+            Choose the time you need. You will review payment details before the reservation is confirmed.
+          </p>
 
-              <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '32px' }}>
-                <img src={spaceDetails.image} alt="Space" style={{ width: '100%', height: '360px', objectFit: 'cover' }} />
-              </div>
+          <form onSubmit={continueToPayment} style={{ marginTop: '32px', backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: '13px', fontWeight: '600', color: '#404040' }}>
+              Start time
+              <input 
+                type="datetime-local" 
+                value={startTime} 
+                onChange={(event) => setStartTime(event.target.value)} 
+                required 
+                style={{ marginTop: '8px', padding: '10px 12px', border: '1px solid #d4d4d4', borderRadius: '6px', fontSize: '14px', outline: 'none' }} 
+              />
+            </label>
 
-              <div style={{ marginBottom: '32px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '8px' }}>About the Space</h3>
-                <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: '1.6' }}>{spaceDetails.description}</p>
-              </div>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: '13px', fontWeight: '600', color: '#404040' }}>
+              End time
+              <input 
+                type="datetime-local" 
+                value={endTime} 
+                onChange={(event) => setEndTime(event.target.value)} 
+                required 
+                style={{ marginTop: '8px', padding: '10px 12px', border: '1px solid #d4d4d4', borderRadius: '6px', fontSize: '14px', outline: 'none' }} 
+              />
+            </label>
 
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '12px' }}>Amenities</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {spaceDetails.amenities.map((item, idx) => (
-                    <span key={idx} style={{ fontSize: '13px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#10b981' }}>✓</span> {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {startTime && endTime && !durationHours ? (
+              <p style={{ fontSize: '13px', color: '#dc2626', margin: 0 }}>Your end time must be after your start time.</p>
+            ) : null}
+
+            <button 
+              type="submit" 
+              disabled={!durationHours} 
+              style={{ width: '100%', backgroundColor: durationHours ? '#000000' : '#d4d4d4', color: '#ffffff', padding: '12px', borderRadius: '6px', fontSize: '14px', fontWeight: '600', border: 'none', cursor: durationHours ? 'pointer' : 'not-allowed', marginTop: '8px' }}
+            >
+              Continue to payment
+            </button>
+          </form>
+        </section>
+
+        <aside style={{ height: 'fit-content', border: '1px solid #e5e5e5', backgroundColor: '#fafafa', borderRadius: '12px', padding: '24px' }}>
+          <img src={Array.isArray(space.images) ? space.images[0] : space.images} alt="" style={{ height: '160px', width: '100%', borderRadius: '8px', objectFit: 'cover' }} />
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#0a0a0a', marginTop: '20px', marginBottom: '4px' }}>{space.name}</h2>
+          <p style={{ fontSize: '13px', color: '#737373', margin: 0 }}>{space.location} · Up to {space.capacity} guests</p>
+
+          <div style={{ marginTop: '24px', borderTop: '1px solid #e5e5e5', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#525252' }}>Hourly rate</span>
+              <strong>KES {formatPrice(space.price_per_hour)}</strong>
             </div>
-
-            {/* Right Column: Reservation Form */}
-            <div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '24px', backgroundColor: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '20px' }}>Book this Space</h3>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Date</label>
-                  <input 
-                    type="date" 
-                    value={selectedDate} 
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>Duration (Hours)</label>
-                  <select 
-                    value={durationHours} 
-                    onChange={(e) => setDurationHours(Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}
-                  >
-                    <option value={1}>1 Hour (10:00 AM - 11:00 AM)</option>
-                    <option value={2}>2 Hours (10:00 AM - 12:00 PM)</option>
-                    <option value={5}>5 Hours (10:00 AM - 3:00 PM)</option>
-                    <option value={8}>8 Hours (9:00 AM - 5:00 PM)</option>
-                  </select>
-                </div>
-
-                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '16px', marginBottom: '20px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#6b7280' }}>KES {hourlyRate.toLocaleString()} × {durationHours} hrs</span>
-                    <span style={{ fontWeight: '600' }}>KES {subtotal.toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#6b7280' }}>Service fee</span>
-                    <span style={{ fontWeight: '600' }}>KES {serviceFee.toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#6b7280' }}>Estimated Tax</span>
-                    <span style={{ fontWeight: '600' }}>KES {estimatedTax.toLocaleString()}</span>
-                  </div>
-                  <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '15px' }}>
-                    <span>Total</span>
-                    <span>KES {totalDue.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleConfirmBooking}
-                  style={{ width: '100%', backgroundColor: '#000000', color: '#ffffff', padding: '12px', borderRadius: '6px', fontWeight: '700', fontSize: '13px', border: 'none', cursor: 'pointer' }}
-                >
-                  Confirm Booking
-                </button>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#525252' }}>Duration</span>
+              <strong>{durationHours || 0} hours</strong>
             </div>
-
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e5e5e5', paddingTop: '12px', fontSize: '15px' }}>
+              <strong>Subtotal</strong>
+              <strong>KES {formatPrice(subtotal)}</strong>
+            </div>
           </div>
-        </main>
+        </aside>
       </div>
-
-      <footer className="sp-footer" style={{ borderTop: '1px solid #e5e7eb', padding: '24px 64px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="sp-logo" style={{ fontSize: '14px', fontWeight: '800' }}>Spacer ®</span>
-        <div style={{ fontSize: '12px', color: '#6b7280' }}>Connecting people with open space and like-minded people.</div>
-      </footer>
-    </div>
+    </main>
   );
-};
-
-export default BookingPage;
+}
