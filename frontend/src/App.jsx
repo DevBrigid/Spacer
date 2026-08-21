@@ -18,6 +18,8 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import LandingPage from './pages/public/LandingPage';
 import BrowsePage from './pages/public/BrowsePage';
 import SpaceDetails from './pages/public/SpaceDetails';
+import PrivacyPolicy from './pages/public/PrivacyPolicy';
+import TermsOfService from './pages/public/TermsOfService';
 
 import ClientDashboard from './pages/client/ClientDashboard';
 import ClientProfile from './pages/client/ClientProfile';
@@ -52,6 +54,8 @@ function App() {
           <Route path='/' element={<LandingPage />} />
           <Route path='/spaces' element={<BrowsePage />} />
           <Route path='/spaces/:id' element={<SpaceDetails />} />
+          <Route path='/privacy' element={<PrivacyPolicy />} />
+          <Route path='/terms' element={<TermsOfService />} />
           <Route path='/login' element={<LoginPage />} />
           <Route path='/register' element={<RegisterPage />} />
           <Route path='/forgot-password' element={<ForgotPasswordPage />} />

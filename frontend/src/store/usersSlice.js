@@ -43,7 +43,7 @@ export const addUser = createAsyncThunk(
 // Mock Social Login
 export const socialLoginUser = createAsyncThunk(
   "users/socialLoginUser",
-  async (provider, { rejectWithValue }) => {
+  async (provider) => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     return {
