@@ -1,6 +1,7 @@
 //  BLOCKS ANYONE WHO ISN'T AN ADMIN
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
+import { getDashboardPath } from "../utils/roleNavigation";
 
 function AdminRoute({ children }) {
     const { isAuthenticated, authChecked, currentUser } = useSelector((state) => state.auth);
@@ -13,8 +14,8 @@ function AdminRoute({ children }) {
         return <Navigate to="/login" replace />; 
     }
 
-    if(currentUser?.role !== 'admin') {
-        return <Navigate to="/" replace />
+    if(currentUser?.role?.trim().toLowerCase() !== 'admin') {
+        return <Navigate to={getDashboardPath(currentUser)} replace />
     }
 
     return children;

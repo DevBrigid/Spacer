@@ -1,7 +1,7 @@
 {
   "spaces": [
     {
-      "id": 1,
+      "id": "1",
       "owner_id": 1,
       "name": "Sunset Rooftop Lounge",
       "description": "Open-air rooftop space perfect for evening events and meetups.",
@@ -12,13 +12,10 @@
       "price_per_day": 9000,
       "capacity": 40,
       "status": "available",
-      "images": [
-        "https://images.unsplash.com/photo-1519671482749-fd09be6ccd7e",
-        "https://images.unsplash.com/photo-1517457373958-b7bdd4587205"
-      ]
+      "images": "https://images.unsplash.com/photo-1517457373958-b7bdd4587205"
     },
     {
-      "id": 2,
+      "id": "2",
       "owner_id": 1,
       "name": "Karen Garden Studio",
       "description": "Quiet garden studio ideal for workshops and small gatherings.",
@@ -34,7 +31,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": "3",
       "owner_id": 2,
       "name": "CBD Conference Hub",
       "description": "Professional conference room with projector and whiteboard.",
@@ -52,7 +49,7 @@
   ],
   "users": [
     {
-      "id": 1,
+      "id": "1",
       "name": "Brigid Owuor",
       "email": "brigid@example.com",
       "phone_number": "+254712345678",
@@ -61,7 +58,7 @@
       "status": "Active"
     },
     {
-      "id": 2,
+      "id": "2",
       "name": "James Mwangi",
       "email": "james@example.com",
       "phone_number": "+254722334455",
@@ -70,18 +67,27 @@
       "status": "Inactive"
     },
     {
-      "id": 3,
+      "id": "3",
       "name": "Aisha Kamau",
       "email": "aisha@example.com",
       "phone_number": "+254733445566",
       "password": "password123",
       "role": "Client",
       "status": "Active"
+    },
+    {
+      "id": "vt666zmGnSQ",
+      "name": "Brigid",
+      "email": "mukamibrigid20@gmail.com",
+      "phone_number": "+254114999389",
+      "password": "brisky123",
+      "role": "Client",
+      "status": "Active"
     }
   ],
   "bookings": [
     {
-      "id": 1,
+      "id": "1",
       "space_id": 2,
       "space_name": "Karen Garden Studio",
       "user_id": 3,
@@ -94,7 +100,7 @@
   ],
   "payments": [
     {
-      "id": 1,
+      "id": "1",
       "booking_id": 1,
       "amount": 3600,
       "merchant_request_id": "fake-merchant-001",

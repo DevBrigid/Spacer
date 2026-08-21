@@ -9,13 +9,12 @@ export const registerUser = createAsyncThunk('auth/registerUser', async (userDat
   if (!userData.name || !userData.email || !userData.password) return rejectWithValue('Please complete all fields.');
   return { user: { id: Date.now(), name: userData.name, email: userData.email, role: 'Client' }, token: createToken(userData.email) };
 });
-
 export const loginUser = createAsyncThunk('auth/loginUser', async (credentials, { rejectWithValue }) => {
   if (!credentials.email || !credentials.password) return rejectWithValue('Email and password are required.');
   const user = readStoredUser() || { id: Date.now(), name: credentials.email.split('@')[0], email: credentials.email, role: 'Client' };
   return { user: { ...user, email: credentials.email }, token: createToken(credentials.email) };
 });
-
+export const requestPasswordReset = createAsyncThunk('auth/requestPasswordReset', async (email, { rejectWithValue }) => email ? email : rejectWithValue('Enter your email address.'));
 export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async () => readStoredUser());
 export const updateProfile = createAsyncThunk('auth/updateProfile', async (profileData) => ({ ...readStoredUser(), ...profileData }));
 export const changePassword = createAsyncThunk('auth/changePassword', async () => ({ success: true }));

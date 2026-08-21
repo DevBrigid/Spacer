@@ -3,9 +3,9 @@ import AdminSideBar from '../components/AdminSidebar';
 
 function AdminLayout() {
     return (
-        <div style={{ display: 'flex'}}>
+        <div className="admin-shell">
             <AdminSideBar />
-            <main style={{ flex: 1, padding: '20px' }}>
+            <main className="admin-content">
                 <Outlet />
             </main>
         </div>
