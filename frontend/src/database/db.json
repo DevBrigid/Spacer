@@ -109,6 +109,5 @@
       "result_desc": "The service request has been accepted successfully.",
       "paid_at": "2026-08-22T09:55:00"
     }
-  ],
-  "$schema": "./node_modules/json-server/schema.json"
+  ]
 }
