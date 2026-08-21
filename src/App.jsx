@@ -1,10 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-import ClientDash from './client/ClientDash.jsx';
-import BookingPage from './client/BookingPage.jsx';
-import PaymentPage from './client/PaymentPage.jsx';
-import MyBookings from './client/MyBookings.jsx';
+import ClientDash from './client/ClientDash';
+import BookingPage from './client/BookingPage';
+import MyBookings from './client/MyBookings';
+import PaymentPage from './client/PaymentPage';
 
 function App() {
   return (
@@ -13,8 +12,9 @@ function App() {
         <Route path="/" element={<Navigate to="/client/dashboard" replace />} />
         <Route path="/client/dashboard" element={<ClientDash />} />
         <Route path="/client/booking" element={<BookingPage />} />
-        <Route path="/client/payment" element={<PaymentPage />} />
         <Route path="/client/my-bookings" element={<MyBookings />} />
+        <Route path="/client/payment" element={<PaymentPage />} />
+        <Route path="*" element={<Navigate to="/client/dashboard" replace />} />
       </Routes>
     </Router>
   );
