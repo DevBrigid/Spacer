@@ -11,6 +11,7 @@ function LoginPage() {
   const { status, error } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const canSubmit = Boolean(formData.email.trim() && formData.password);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -18,6 +19,7 @@ function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canSubmit) return;
     const result = await dispatch(loginUser(formData));
     if (loginUser.fulfilled.match(result)) {
       navigate(getDashboardPath(result.payload.user), { replace: true });
@@ -80,10 +82,10 @@ function LoginPage() {
 
           <button
             type="submit"
-            disabled={status === "loading"}
-            className="w-full bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-60"
+            disabled={status === "pending" || status === "loading" || !canSubmit}
+            className="w-full bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {status === "loading" ? "Logging in..." : "Log in"}
+            {status === "pending" || status === "loading" ? "Logging in..." : "Log in"}
           </button>
         </form>
 

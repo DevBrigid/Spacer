@@ -1,23 +1,39 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import mockDatabase from '../../database/db.json';
 import { initiatePayment } from '../../store/paymentsSlice';
+import { addBooking } from '../../store/bookingsSlice';
 
 export default function PaymentPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const payment = useSelector((state) => state.payments);
-  const [card, setCard] = useState({ number: '', expiry: '', cvv: '', address: '' });
-  const subtotal = 20000;
-  const serviceFee = 1500;
-  const tax = 3440;
+  const booking = useSelector((state) => state.bookings);
+  const user = useSelector((state) => state.auth.currentUser);
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || '');
+  const space = mockDatabase.spaces.find((item) => String(item.id) === String(booking.selectedSpaceId));
+  const subtotal = booking.totalAmount || 0;
+  const serviceFee = Math.round(subtotal * 0.05);
+  const tax = Math.round((subtotal + serviceFee) * 0.16);
   const total = subtotal + serviceFee + tax;
-  const handleChange = (event) => setCard({ ...card, [event.target.name]: event.target.value });
-  const handleSubmit = (event) => { event.preventDefault(); dispatch(initiatePayment({ bookingId: 1, amount: total, phoneNumber: '' })); };
+  const isValidPhone = /^\+?254\d{9}$|^0\d{9}$/.test(phoneNumber.replace(/\s/g, ''));
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!isValidPhone) return;
+    const result = await dispatch(initiatePayment({ bookingId: booking.selectedSpaceId, amount: total, phoneNumber }));
+    if (initiatePayment.fulfilled.match(result)) {
+      dispatch(addBooking({ userId: user?.id, client: user?.name || 'Spacer Client', space: space.name, date: booking.startTime?.split('T')[0], duration: booking.durationHours, amount: total, status: 'Confirmed' }));
+      navigate('/spacer/invoice');
+    }
+  };
+
+  if (!space || !subtotal) return <main className="mx-auto max-w-3xl px-6 py-16"><h1 className="text-2xl font-semibold">Your booking details are missing.</h1><p className="mt-3 text-sm text-stone-600">Choose a space and time before continuing to payment.</p><Link to="/spaces" className="mt-5 inline-block text-sm font-medium underline underline-offset-4">Browse spaces</Link></main>;
 
   return (
     <div className="public-page checkout-page">
-      <header className="checkout-header"><p className="eyebrow">SPACER / PAYMENT</p><h1>Secure Checkout</h1><p>Complete your booking reservation with encrypted payment</p></header>
-      {payment.status === 'success' && <div className="payment-success">Payment successful. Your reservation is confirmed.</div>}
-      <div className="checkout-grid"><section className="checkout-form"><h2>Payment details</h2><div className="saved-payment"><span className="card-icon">VISA</span><div><strong>Visa ending in 4242</strong><small>Expires 12/28</small></div><span>Saved</span></div><h3>Or enter new card details</h3><form onSubmit={handleSubmit}><label>Card number<input name="number" value={card.number} onChange={handleChange} placeholder="0000 0000 0000 0000" required /></label><div className="checkout-row"><label>Expiration date<input name="expiry" value={card.expiry} onChange={handleChange} placeholder="MM / YY" required /></label><label>CVV<input name="cvv" value={card.cvv} onChange={handleChange} placeholder="•••" required /></label></div><label>Billing Address<input name="address" value={card.address} onChange={handleChange} placeholder="Street Address, Apt, Suite" required /></label><button className="primary-button pay-button" disabled={payment.status === 'pending'}>{payment.status === 'pending' ? 'Processing...' : `Pay Now (KES ${total.toLocaleString()}.00)`}</button></form></section><aside className="order-summary"><h2>Order Summary</h2><div className="summary-space"><strong>The Creative Floor</strong><span>Studio B • Westlands</span></div><p className="summary-label">RESERVATION DATE</p><p>August 24, 2026 (10:00 AM - 2:00 PM)</p><dl><div><dt>Subtotal</dt><dd>KES 20,000.00</dd></div><div><dt>Service fee</dt><dd>KES 1,500.00</dd></div><div><dt>Tax</dt><dd>KES 3,440.00</dd></div><div className="total"><dt>Total Due</dt><dd>KES 24,940.00</dd></div></dl></aside></div><footer className="site-footer"><strong>Spacer©</strong><span>Connecting people with open spaces and like-minded people</span><small>spacer©2026</small></footer>
+      <header className="checkout-header"><p className="eyebrow">SPACER / M-PESA</p><h1>Pay with M-Pesa</h1><p>Enter the number that should receive the M-Pesa prompt.</p></header>
+      <div className="checkout-grid"><section className="checkout-form"><h2>Mobile payment</h2><p className="text-sm text-stone-600">We will send a secure STK push to your phone. Enter your M-Pesa PIN on your device to complete the payment.</p><form onSubmit={handleSubmit}><label>M-Pesa phone number<input type="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="+254 7XX XXX XXX" required /></label>{phoneNumber && !isValidPhone ? <p className="-mt-3 mb-4 text-sm text-red-600">Use a Kenyan number, for example +254712345678.</p> : null}<button className="primary-button pay-button" disabled={payment.status === 'pending' || !isValidPhone}>{payment.status === 'pending' ? 'Sending M-Pesa prompt…' : `Pay KES ${total.toLocaleString()}.00`}</button></form></section><aside className="order-summary"><h2>Order Summary</h2><div className="summary-space"><strong>{space.name}</strong><span>{space.location}</span></div><p className="summary-label">RESERVATION</p><p>{booking.startTime ? new Date(booking.startTime).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : ''} — {booking.endTime ? new Date(booking.endTime).toLocaleTimeString('en-KE', { timeStyle: 'short' }) : ''}</p><dl><div><dt>Subtotal ({booking.durationHours} hours)</dt><dd>KES {subtotal.toLocaleString()}.00</dd></div><div><dt>Service fee</dt><dd>KES {serviceFee.toLocaleString()}.00</dd></div><div><dt>Tax</dt><dd>KES {tax.toLocaleString()}.00</dd></div><div className="total"><dt>Total Due</dt><dd>KES {total.toLocaleString()}.00</dd></div></dl></aside></div><footer className="site-footer"><strong>Spacer©</strong><span>Connecting people with open spaces and like-minded people</span><small>spacer©2026</small></footer>
     </div>
   );
 }

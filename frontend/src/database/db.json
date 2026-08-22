@@ -2,7 +2,7 @@
   "spaces": [
     {
       "id": "1",
-      "owner_id": 1,
+      "owner_id": 2,
       "name": "Sunset Rooftop Lounge",
       "description": "Open-air rooftop space perfect for evening events and meetups.",
       "location": "Westlands, Nairobi",
@@ -72,15 +72,6 @@
       "email": "aisha@example.com",
       "phone_number": "+254733445566",
       "password": "password123",
-      "role": "Client",
-      "status": "Active"
-    },
-    {
-      "id": "vt666zmGnSQ",
-      "name": "Brigid",
-      "email": "mukamibrigid20@gmail.com",
-      "phone_number": "+254114999389",
-      "password": "brisky123",
       "role": "Client",
       "status": "Active"
     }

@@ -13,9 +13,12 @@ export const initiatePayment = createAsyncThunk(
         return {
             merchantRequestId: 'merchant' + Date.now(),
             checkoutRequestId: 'checkout' + Date.now(),
+            receiptNumber: `SP${Date.now().toString().slice(-8)}`,
             status: 'success',
             resultDesc: 'The payment has been made successfully',
             amount: paymentDetails.amount,
+            phoneNumber: paymentDetails.phoneNumber,
+            paidAt: new Date().toISOString(),
         };
     }
 );
@@ -29,6 +32,9 @@ const paymentsSlice = createSlice({
         status: 'idle',
         resultDesc: null,
         amount: 0,
+        phoneNumber: null,
+        receiptNumber: null,
+        paidAt: null,
     },
     reducers: {
         resetPayment: (state) => {
@@ -37,6 +43,9 @@ const paymentsSlice = createSlice({
             state.status = 'idle';
             state.resultDesc = null;
             state.amount = 0;
+            state.phoneNumber = null;
+            state.receiptNumber = null;
+            state.paidAt = null;
         },
     },
     extraReducers: (builder) => {
@@ -50,6 +59,9 @@ const paymentsSlice = createSlice({
             state.checkoutRequestId = action.payload.checkoutRequestId;
             state.resultDesc = action.payload.resultDesc;
             state.amount = action.payload.amount;
+            state.phoneNumber = action.payload.phoneNumber;
+            state.receiptNumber = action.payload.receiptNumber;
+            state.paidAt = action.payload.paidAt;
         })
         .addCase(initiatePayment.rejected, (state, action) => {
             state.status = 'failed';
