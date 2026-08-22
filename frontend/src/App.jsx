@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-import { loadUserFromStorage } from './store/authSlice';
+import { loadUserFromStorage, fetchCurrentUser } from './store/authSlice';
 
 import PrivateRoute from './routes/PrivateRoute';
 import AdminRoute from './routes/AdminRoute';
@@ -25,8 +25,9 @@ import ClientDashboard from './pages/client/ClientDashboard';
 import ClientProfile from './pages/client/ClientProfile';
 import BookingPage from './pages/client/BookingPage';
 import MyBookings from './pages/client/MyBookings';
-import AgreementPage from './pages/client/AgreementPage';
+import AgreementPage from './pages/public/AgreementPage';
 import PaymentPage from './pages/client/PaymentPage';
+import InvoicePage from './pages/client/InvoicePage';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import BookingHistory from './pages/admin/BookingHistory';
@@ -36,13 +37,19 @@ import AdminProfile from './pages/admin/AdminProfile';
 
 function App() {
   const dispatch = useDispatch();
-  const { authChecked } = useSelector((state) => state.auth);
+  const { token, authChecked } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
 
-  if (!authChecked) {
+  useEffect(() => {
+    if (token) {
+      dispatch(fetchCurrentUser(token));
+    }
+  }, [token, dispatch]);
+
+  if (!authChecked && localStorage.getItem('token')) {
     return <p>Loading...</p>
   }
 
@@ -54,11 +61,12 @@ function App() {
           <Route path='/' element={<LandingPage />} />
           <Route path='/spaces' element={<BrowsePage />} />
           <Route path='/spaces/:id' element={<SpaceDetails />} />
-          <Route path='/privacy' element={<PrivacyPolicy />} />
-          <Route path='/terms' element={<TermsOfService />} />
           <Route path='/login' element={<LoginPage />} />
           <Route path='/register' element={<RegisterPage />} />
           <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+          <Route path='/agreement' element={<AgreementPage />} />
+          <Route path='/terms' element={<TermsOfService />} />
+          <Route path='/privacy' element={<PrivacyPolicy />} />
 
           {/* Client - login required */}
           <Route path='/spacer' element={<PrivateRoute><ClientDashboard /></PrivateRoute>} />
@@ -67,6 +75,7 @@ function App() {
           <Route path='/spacer/booking/:spacerId' element={<PrivateRoute><BookingPage /></PrivateRoute>} />
           <Route path='/spacer/agreement' element={<PrivateRoute><AgreementPage /></PrivateRoute>} />
           <Route path='/spacer/payment' element={<PrivateRoute><PaymentPage /></PrivateRoute>} />
+          <Route path='/spacer/invoice' element={<PrivateRoute><InvoicePage /></PrivateRoute>} />
         </Route>
 
         {/* Admin - admin role required */}

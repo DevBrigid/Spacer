@@ -17,6 +17,14 @@ function RegisterPage() {
     phone_number: "",
     password: "",
   });
+  const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
+  const canSubmit = Boolean(
+    formData.name.trim()
+    && formData.email.trim()
+    && formData.phone_number.trim()
+    && formData.password
+    && hasAcceptedAgreement,
+  );
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,6 +32,7 @@ function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canSubmit) return;
     const result = await dispatch(registerUser(formData));
     if (registerUser.fulfilled.match(result)) {
       navigate(getDashboardPath(result.payload.user), { replace: true });
@@ -108,14 +117,19 @@ function RegisterPage() {
             />
           </div>
 
+          <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-gray-600">
+            <input type="checkbox" name="client-agreement" checked={hasAcceptedAgreement} onChange={(event) => setHasAcceptedAgreement(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-black" />
+            <span>I have read and agree to the <Link to="/terms" target="_blank" className="font-medium text-black underline underline-offset-2">Terms of Service</Link>.</span>
+          </label>
+
           {error && error !== "ACCOUNT_NOT_FOUND" && <p className="text-xs text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={status === "loading"}
-            className="w-full bg-black py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
+            disabled={status === "pending" || status === "loading" || !canSubmit}
+            className="w-full bg-black py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {status === "loading" ? "Creating account..." : "Register"}
+            {status === "pending" || status === "loading" ? "Creating account..." : "Register"}
           </button>
         </form>
 

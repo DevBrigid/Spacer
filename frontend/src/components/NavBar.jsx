@@ -13,6 +13,7 @@ function Navbar() {
         <Link to="/spaces" className="text-gray-600 transition-colors hover:text-black">Browse</Link>
         {isAuthenticated ? (
           <>
+            <Link to="/spacer" className="text-gray-600 transition-colors hover:text-black">Dashboard</Link>
             <Link to="/spacer/bookings" className="text-gray-600 transition-colors hover:text-black">My Bookings</Link>
             <Link to="/spacer/profile" className="font-medium transition-colors hover:text-gray-600">{currentUser?.name || "Profile"}</Link>
           </>

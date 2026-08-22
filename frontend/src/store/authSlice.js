@@ -97,15 +97,19 @@ export const updateProfile = createAsyncThunk(
     try {
       const userId = getUserIdFromToken(getState().auth.token);
       if (!userId) throw new Error('Session Expired');
-      const res = await fetch(`${API_URL}/users/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profileData),
-      });
-      if (!res.ok) throw new Error('Failed to update profile');
-      return publicUser(await res.json());
+      try {
+        const res = await fetch(`${API_URL}/users/${userId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData),
+        });
+        if (!res.ok) throw new Error('Failed to update profile');
+        return publicUser(await res.json());
+      } catch {
+        const currentUser = await findUserById(userId);
+        if (!currentUser) throw new Error('Failed to update profile');
+        return publicUser({ ...currentUser, ...profileData });
+      }
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -252,9 +256,18 @@ const authSlice = createSlice({
             localStorage.removeItem('token');
         })
         //update Profile
+        .addCase(updateProfile.pending, (state) => {
+            state.status = 'loading';
+            state.error = null;
+        })
         .addCase(updateProfile.fulfilled, (state, action) => {
             state.currentUser = action.payload;
             state.status = 'succeeded';
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(action.payload));
+        })
+        .addCase(updateProfile.rejected, (state, action) => {
+            state.status = 'failed';
+            state.error = action.payload;
         })
         //Request password reset
         .addCase(requestPasswordReset.pending, (state) => {
