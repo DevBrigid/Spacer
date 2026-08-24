@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
-  addSpace,
-  updateSpace,
-  deleteSpace,
+  createSpace,
+  saveSpace,
+  removeSpace,
 } from "../../store/spacesSlice";
+import LocationPicker from "../../components/LocationPicker";
 
 function ManageSpaces() {
 
@@ -25,11 +26,16 @@ function ManageSpaces() {
   const [formData, setFormData] = useState({
     name: "",
     location: "",
+    latitude: "",
+    longitude: "",
     pricePerHour: "",
     capacity: "",
     description: "",
     status: "Available",
   });
+  const [locationError, setLocationError] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
+  const [formError, setFormError] = useState("");
 
 
   /* HANDLE INPUT */
@@ -53,6 +59,8 @@ function ManageSpaces() {
     setFormData({
       name: "",
       location: "",
+      latitude: "",
+      longitude: "",
       pricePerHour: "",
       capacity: "",
       description: "",
@@ -60,6 +68,9 @@ function ManageSpaces() {
     });
 
     setEditingSpace(null);
+    setLocationError("");
+    setFormError("");
+    setIsLocating(false);
 
     setShowForm(false);
 
@@ -68,9 +79,14 @@ function ManageSpaces() {
 
   /* ADD / UPDATE */
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
 
     e.preventDefault();
+
+    if (!formData.latitude || !formData.longitude) {
+      setFormError("Select the space location on the map before saving.");
+      return;
+    }
 
 
     const space = {
@@ -82,28 +98,22 @@ function ManageSpaces() {
 
       capacity:
         Number(formData.capacity),
+
+      latitude: Number(formData.latitude),
+      longitude: Number(formData.longitude),
     };
 
 
-    if (editingSpace) {
-
-      dispatch(
-        updateSpace({
-          id: editingSpace.id,
-          ...space,
-        })
-      );
-
-    } else {
-
-      dispatch(
-        addSpace(space)
-      );
-
+    try {
+      if (editingSpace) {
+        await dispatch(saveSpace({ id: editingSpace.id, ...space })).unwrap();
+      } else {
+        await dispatch(createSpace(space)).unwrap();
+      }
+      resetForm();
+    } catch (error) {
+      setFormError(error || "The space could not be saved.");
     }
-
-
-    resetForm();
 
   };
 
@@ -117,6 +127,8 @@ function ManageSpaces() {
     setFormData({
       name: space.name,
       location: space.location,
+      latitude: space.latitude ?? "",
+      longitude: space.longitude ?? "",
       pricePerHour: space.pricePerHour,
       capacity: space.capacity,
       description: space.description || "",
@@ -127,10 +139,38 @@ function ManageSpaces() {
 
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setFormData((current) => ({
+          ...current,
+          latitude: coords.latitude.toFixed(6),
+          longitude: coords.longitude.toFixed(6),
+        }));
+        setIsLocating(false);
+      },
+      (error) => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? "Location access was denied. Choose the location on the map instead."
+          : "We could not get your location. Please try again or choose it on the map.";
+        setLocationError(message);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
 
   /* DELETE */
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
 
     const confirmed =
       window.confirm(
@@ -139,9 +179,11 @@ function ManageSpaces() {
 
     if (confirmed) {
 
-      dispatch(
-        deleteSpace(id)
-      );
+      try {
+        await dispatch(removeSpace(id)).unwrap();
+      } catch (error) {
+        window.alert(error || "The space could not be deleted.");
+      }
 
     }
 
@@ -291,6 +333,25 @@ function ManageSpaces() {
 
                 </div>
 
+                {/* MAP LOCATION */}
+
+                <div className="input-group full location-picker">
+
+                  <div className="location-picker-header">
+                    <div>
+                      <label>Choose location on map</label>
+                      <p>Click the map to place a pin, then drag it to refine the location.</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={useCurrentLocation} disabled={isLocating}>
+                      {isLocating ? "Finding location…" : "Use my current location"}
+                    </button>
+                  </div>
+
+                  {locationError && <p className="error-message" role="alert">{locationError}</p>}
+                  <LocationPicker latitude={formData.latitude} longitude={formData.longitude} onChange={({ latitude, longitude }) => { setFormData((current) => ({ ...current, latitude, longitude })); setFormError(""); }} />
+
+                </div>
+
 
                 {/* LOCATION */}
 
@@ -404,6 +465,8 @@ function ManageSpaces() {
               {/* BUTTONS */}
 
               <div className="form-buttons">
+
+                {formError && <p className="error-message" role="alert">{formError}</p>}
 
                 <button
                   type="button"

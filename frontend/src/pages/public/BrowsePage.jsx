@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import mockDatabase from '../../database/db.json';
-
-const API_URL = 'http://localhost:3001';
+import { fetchSpaces } from '../../store/spacesSlice';
 
 const formatPrice = (price) => new Intl.NumberFormat('en-KE').format(price);
 
 export default function BrowsePage() {
   const navigate = useNavigate();
-  const [spaces, setSpaces] = useState(mockDatabase.spaces);
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+  const spaces = useSelector((state) => state.spaces.spaces);
+  const isLoading = useSelector((state) => state.spaces.status === 'loading');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('All locations');
   const [availability, setAvailability] = useState('All spaces');
@@ -17,23 +17,8 @@ export default function BrowsePage() {
   const [maximumPrice, setMaximumPrice] = useState('Any price');
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadSpaces() {
-      try {
-        const response = await fetch(`${API_URL}/spaces`, { signal: controller.signal });
-        if (!response.ok) throw new Error('Unable to load spaces');
-        setSpaces(await response.json());
-      } catch {
-        // The bundled db.json data remains available when the optional mock server is offline.
-      } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
-      }
-    }
-
-    loadSpaces();
-    return () => controller.abort();
-  }, []);
+    dispatch(fetchSpaces());
+  }, [dispatch]);
 
   const locations = useMemo(
     () => [...new Set(spaces.map((space) => space.location))].sort(),
@@ -44,9 +29,9 @@ export default function BrowsePage() {
     const searchableText = `${space.name} ${space.description} ${space.location}`.toLowerCase();
     const matchesSearch = searchableText.includes(query.trim().toLowerCase());
     const matchesLocation = location === 'All locations' || space.location === location;
-    const matchesAvailability = availability === 'All spaces' || space.status === availability;
+    const matchesAvailability = availability === 'All spaces' || space.status.toLowerCase() === availability;
     const matchesCapacity = minimumCapacity === 'Any capacity' || space.capacity >= Number(minimumCapacity);
-    const matchesPrice = maximumPrice === 'Any price' || space.price_per_hour <= Number(maximumPrice);
+    const matchesPrice = maximumPrice === 'Any price' || space.pricePerHour <= Number(maximumPrice);
     return matchesSearch && matchesLocation && matchesAvailability && matchesCapacity && matchesPrice;
   }), [availability, location, maximumPrice, minimumCapacity, query, spaces]);
 
@@ -95,9 +80,9 @@ export default function BrowsePage() {
 
         {!isLoading && filteredSpaces.length > 0 ? <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredSpaces.map((space) => <article key={space.id} className="group overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
-            <div className="relative overflow-hidden"><img src={space.images?.[0]} alt={space.name} className="h-56 w-full object-cover transition duration-500 group-hover:scale-105" /><span className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-medium capitalize ${space.status === 'available' ? 'bg-white/95 text-emerald-700' : 'bg-stone-900/90 text-white'}`}>{space.status}</span></div>
+            <div className="relative overflow-hidden"><img src={Array.isArray(space.images) ? space.images[0] : space.images} alt={space.name} className="h-56 w-full object-cover transition duration-500 group-hover:scale-105" /><span className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-medium capitalize ${space.status.toLowerCase() === 'available' ? 'bg-white/95 text-emerald-700' : 'bg-stone-900/90 text-white'}`}>{space.status}</span></div>
             <div className="p-5"><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{space.location}</p><h3 className="mt-2 text-lg font-semibold text-stone-950">{space.name}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-stone-600">{space.description}</p>
-              <div className="mt-5 flex items-end justify-between gap-3 border-t border-stone-100 pt-4"><div><p className="text-base font-semibold text-stone-950">KES {formatPrice(space.price_per_hour)}</p><p className="text-xs text-stone-500">per hour · up to {space.capacity} guests</p></div><button onClick={() => navigate(`/spaces/${space.id}`)} className="shrink-0 bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-stone-700">View space</button></div>
+              <div className="mt-5 flex items-end justify-between gap-3 border-t border-stone-100 pt-4"><div><p className="text-base font-semibold text-stone-950">KES {formatPrice(space.pricePerHour)}</p><p className="text-xs text-stone-500">per hour · up to {space.capacity} guests</p></div><button onClick={() => navigate(`/spaces/${space.id}`)} className="shrink-0 bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-stone-700">View space</button></div>
             </div>
           </article>)}
         </div> : null}
