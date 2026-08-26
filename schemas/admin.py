@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 class AdminUserUpdate(BaseModel):
@@ -8,4 +8,7 @@ class AdminUserUpdate(BaseModel):
 
 class AdminSpaceUpdate(BaseModel):
     status: Optional[str] = None
-    owner_id: Optional[int] = None
+    owner_id: Optional[int] = Field(None, alias="ownerId")
+
+    class Config:
+        populate_by_name = True

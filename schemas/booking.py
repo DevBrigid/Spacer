@@ -1,24 +1,27 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime
 
 class BookingCreate(BaseModel):
-    space_id: int
-    start_time: datetime
-    end_time: datetime
-    agreed_to_terms: bool
+    space_id: int = Field(..., alias="spaceId")
+    user_id: Optional[int] = Field(None, alias="userId")
+    start_time: str = Field(..., alias="startTime")
+    end_time: Optional[str] = Field(None, alias="endTime")
+    duration_hours: float = Field(..., alias="durationHours")
+    total_amount: float = Field(..., alias="totalAmount")
 
 class BookingResponse(BaseModel):
     id: int
-    client_id: int
-    space_id: int
-    start_time: datetime
-    end_time: datetime
-    duration_hours: float
-    subtotal: float
-    total_due: float
+    user_id: int = Field(..., alias="userId")
+    client: Optional[str] = "Spacer Client"
+    space_id: int = Field(..., alias="spaceId")
+    space: str = Field("Workspace", alias="spaceName")
+    date: str = Field(..., alias="startTime")
+    duration: float = Field(..., alias="durationHours")
+    amount: float = Field(..., alias="totalAmount")
     status: str
-    agreed_to_terms: bool
     created_at: datetime
 
     class Config:
         from_attributes = True
+        populate_by_name = True

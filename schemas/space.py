@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
@@ -7,31 +7,32 @@ class CoordinatesSchema(BaseModel):
     longitude: float
 
 class SpaceBase(BaseModel):
-    title: str
+    name: str = Field(..., alias="title")
     description: Optional[str] = None
     location: str
     capacity: int
-    price_per_hour: float
+    price_per_hour: float = Field(..., alias="pricePerHour")
     coordinates: Optional[CoordinatesSchema] = None
 
 class SpaceCreate(SpaceBase):
     images: Optional[List[str]] = []
 
 class SpaceUpdate(BaseModel):
-    title: Optional[str] = None
+    name: Optional[str] = Field(None, alias="title")
     description: Optional[str] = None
     location: Optional[str] = None
     capacity: Optional[int] = None
-    price_per_hour: Optional[float] = None
+    price_per_hour: Optional[float] = Field(None, alias="pricePerHour")
     status: Optional[str] = None
     coordinates: Optional[CoordinatesSchema] = None
 
 class SpaceResponse(SpaceBase):
     id: int
-    owner_id: int
+    owner_id: int = Field(..., alias="ownerId")
     status: str
     images: List[str] = []
     created_at: datetime
 
     class Config:
         from_attributes = True
+        populate_by_name = True

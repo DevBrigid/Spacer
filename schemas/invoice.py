@@ -1,15 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 class InvoiceResponse(BaseModel):
     id: int
-    booking_id: int
-    client_name: str
-    space_title: str
-    amount_paid: float
-    transaction_ref: str
-    generated_at: datetime
-    download_url: str
+    booking_id: int = Field(..., alias="bookingId")
+    receipt_number: str = Field(..., alias="receiptNumber")
+    client_name: str = Field(..., alias="clientName")
+    space_name: str = Field(..., alias="spaceName")
+    amount_paid: float = Field(..., alias="amountPaid")
+    phone_number: str = Field(..., alias="phoneNumber")
+    paid_at: datetime = Field(..., alias="paidAt")
 
     class Config:
         from_attributes = True
+        populate_by_name = True

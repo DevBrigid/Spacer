@@ -1,14 +1,15 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 
 class UserBase(BaseModel):
     email: EmailStr
     name: str
+    phone_number: Optional[str] = Field(None, alias="phoneNumber")
 
 class UserCreate(UserBase):
     password: str
-    role: str  # Must be passed dynamically ('Client', 'Host', or 'Admin')
+    role: str  # 'Client', 'Host', or 'Admin'
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -21,6 +22,7 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 class TokenResponse(BaseModel):
     access_token: str
