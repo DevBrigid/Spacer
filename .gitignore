@@ -4,4 +4,9 @@ node_modules
 package.json
 package-lock.json
 .vscode
-.env
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
