@@ -10,3 +10,9 @@ package-lock.json
 venv/
 ENV/
 env/
+.cursor/
+
+# Environment
+.env
+backend/.env
+__pycache__/
