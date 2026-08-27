@@ -1,10 +1,15 @@
 from fastapi import FastAPI
-from app.routers import auth
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.routers import auth, spacer, admin, bookings, spaces, payments
 
 app = FastAPI()
-app.include_router(auth.router)
+app.include_router(auth)
+app.include_router(spacer)
+app.include_router(admin)
+app.include_router(bookings)
+app.include_router(spaces)
+app.include_router(payments)
 
 app.add_middleware(
     CORSMiddleware,
