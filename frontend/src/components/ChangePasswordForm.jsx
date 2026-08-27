@@ -47,12 +47,6 @@ function ChangePasswordForm() {
         </div>
       )}
 
-      {status === 'succeeded' && !localError && (
-        <div className="mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-          Password updated successfully!
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Current Password</label>
@@ -90,7 +84,7 @@ function ChangePasswordForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full rounded bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full rounded bg-black py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:opacity-50"
         >
           {isLoading ? 'Updating...' : 'Update Password'}
         </button>

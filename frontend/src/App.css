@@ -83,6 +83,8 @@
 .input-group input, .input-group select, .input-group textarea, .search-input { width: 100%; box-sizing: border-box; border: 1px solid #d4d4d4; border-radius: 6px; background: #fff; color: #171717; font: inherit; font-size: .84rem; padding: 10px 11px; outline: none; }
 .input-group textarea { resize: vertical; }
 .input-group input:focus, .input-group select:focus, .input-group textarea:focus, .search-input:focus { border-color: #171717; box-shadow: 0 0 0 3px #17171714; }
+.field-help { margin: 0; color: #737373; font-size: .76rem; }
+.space-image-preview { display: block; width: min(100%, 360px); height: 180px; margin-top: 4px; border: 1px solid #e5e5e5; border-radius: 8px; object-fit: cover; }
 .location-picker { border-top: 1px solid #ededed; padding-top: 18px; }
 .location-picker-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .location-picker-header p { margin: 4px 0 0; color: #737373; font-size: .8rem; }

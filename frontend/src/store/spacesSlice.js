@@ -3,11 +3,11 @@ import mockDatabase from '../database/db.json';
 
 const API_URL = 'http://localhost:3001';
 const normalizeSpace = (space) => ({ id: space.id, name: space.name, location: space.location, latitude: space.latitude, longitude: space.longitude, images: space.images, pricePerHour: space.price_per_hour, capacity: space.capacity, description: space.description, status: space.status ? space.status.charAt(0).toUpperCase() + space.status.slice(1) : 'Available' });
-const toApiSpace = ({ pricePerHour, status, ...space }) => ({
+const toApiSpace = ({ pricePerHour, status, imageUrl, images, ...space }) => ({
   ...space,
   price_per_hour: Number(pricePerHour),
   status: status.toLowerCase(),
-  images: space.images || ['https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80'],
+  images: imageUrl ? [imageUrl] : images || ['https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80'],
 });
 const localSpaces = () => mockDatabase.spaces.map(normalizeSpace);
 export const fetchSpaces = createAsyncThunk('spaces/fetchAll', async (_, { rejectWithValue }) => {

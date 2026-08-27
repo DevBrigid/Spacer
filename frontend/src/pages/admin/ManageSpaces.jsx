@@ -26,6 +26,7 @@ function ManageSpaces() {
   const [formData, setFormData] = useState({
     name: "",
     location: "",
+    imageUrl: "",
     latitude: "",
     longitude: "",
     pricePerHour: "",
@@ -59,6 +60,7 @@ function ManageSpaces() {
     setFormData({
       name: "",
       location: "",
+      imageUrl: "",
       latitude: "",
       longitude: "",
       pricePerHour: "",
@@ -127,6 +129,7 @@ function ManageSpaces() {
     setFormData({
       name: space.name,
       location: space.location,
+      imageUrl: Array.isArray(space.images) ? space.images[0] : space.images || "",
       latitude: space.latitude ?? "",
       longitude: space.longitude ?? "",
       pricePerHour: space.pricePerHour,
@@ -330,6 +333,36 @@ function ManageSpaces() {
                     placeholder="Enter space name"
                     required
                   />
+
+                </div>
+
+                {/* IMAGE */}
+
+                <div className="input-group full">
+
+                  <label>
+                    Space image URL
+                  </label>
+
+                  <input
+                    type="url"
+                    name="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={handleChange}
+                    placeholder="https://example.com/your-space-image.jpg"
+                  />
+
+                  <p className="field-help">Optional. If left blank, Spacer uses a default space image.</p>
+
+                  {formData.imageUrl && (
+                    <img
+                      src={formData.imageUrl}
+                      alt="Space image preview"
+                      className="space-image-preview"
+                      onError={(event) => { event.currentTarget.style.display = "none"; }}
+                      onLoad={(event) => { event.currentTarget.style.display = "block"; }}
+                    />
+                  )}
 
                 </div>
 

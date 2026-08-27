@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 
 function AdminDashboard() {
   const spaces = useSelector((state) => state.spaces.spaces);
-  const bookings = useSelector((state) => state.bookings.bookings)
+  const bookings = useSelector((state) => state.bookings.bookings);
+  const currentUser = useSelector((state) => state.auth.currentUser);
+  const adminName = currentUser?.name || "Administrator";
 
   const totalSpaces = spaces.length;
 
@@ -77,16 +79,16 @@ function AdminDashboard() {
             <h1>Dashboard</h1>
 
             <p>
-              Welcome back, Admin
+              Welcome back, {adminName}
             </p>
           </div>
 
           <div className="admin-profile">
             <div className="profile-circle">
-              A
+              {adminName[0]?.toUpperCase() || "A"}
             </div>
 
-            <span>Admin</span>
+            <span>{adminName}</span>
           </div>
 
         </header>

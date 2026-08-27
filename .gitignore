@@ -3,16 +3,25 @@ node_modules
 #packages
 package.json
 package-lock.json
-.vscode
+.vscode/
 
-# Python virtual environments
+# Python
+**/__pycache__/
+*.py[cod]
+*.egg-info/
 .venv/
 venv/
 ENV/
 env/
+
+# Editor and environment files
 .cursor/
 
 # Environment
 .env
+.env.*
 backend/.env
 __pycache__/
+
+# Databases
+*.db
