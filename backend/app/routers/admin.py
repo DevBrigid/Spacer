@@ -9,6 +9,7 @@ from app.models.space import Space
 from app.models.booking import Booking
 from app.schemas.user_schema import UserOut
 from app.schemas.space import SpaceResponse, SpaceCreate
+import datetime
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -71,19 +72,53 @@ def list_spaces(db: Session = Depends(get_db)):
 		spaces = db.query(Space).all()
 	except Exception:
 		spaces = []
-	return spaces
+
+	def to_resp(s: Space):
+		return {
+			"id": s.id,
+			"title": s.title,
+			"description": s.description,
+			"location": s.location,
+			"capacity": s.capacity,
+			"pricePerHour": float(s.price_per_hour) if s.price_per_hour is not None else 0.0,
+			"ownerId": getattr(s, 'owner_id', None),
+			"status": getattr(s, 'status', 'active'),
+			"images": getattr(s, 'images', []),
+			"created_at": getattr(s, 'created_at', None),
+		}
+
+	return [to_resp(s) for s in spaces]
 
 
 @router.post("/spaces", response_model=SpaceResponse, status_code=status.HTTP_201_CREATED)
-def create_space(space_in: SpaceCreate, db: Session = Depends(get_db)):
-	space = Space(
-		title=space_in.name,
-		description=space_in.description or "",
-		location=space_in.location,
-		capacity=space_in.capacity,
-		price_per_hour=space_in.price_per_hour,
-	)
-	db.add(space)
-	db.commit()
-	db.refresh(space)
-	return space
+def create_space(space_in: SpaceCreate, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+	try:
+		space = Space(
+			title=space_in.name,
+			description=space_in.description or "",
+			location=space_in.location,
+			capacity=space_in.capacity,
+			price_per_hour=space_in.price_per_hour,
+		)
+		db.add(space)
+		db.commit()
+		db.refresh(space)
+
+		# Build response dict matching SpaceResponse to avoid relying on optional model attributes
+		resp = {
+			"id": space.id,
+			"title": space.title,
+			"description": space.description,
+			"location": space.location,
+			"capacity": space.capacity,
+			"pricePerHour": float(space.price_per_hour) if space.price_per_hour is not None else 0.0,
+			"ownerId": current_admin.id if current_admin is not None else getattr(space, "owner_id", None),
+			"status": getattr(space, "status", "active"),
+			"images": getattr(space, "images", []),
+			"created_at": getattr(space, "created_at", datetime.datetime.utcnow()),
+		}
+
+		return resp
+	except Exception as e:
+		# Surface the error for debugging
+		raise HTTPException(status_code=500, detail=str(e))

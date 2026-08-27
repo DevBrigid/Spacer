@@ -28,10 +28,10 @@ class SpaceUpdate(BaseModel):
 
 class SpaceResponse(SpaceBase):
     id: int
-    owner_id: int = Field(..., alias="ownerId")
-    status: str
+    owner_id: Optional[int] = Field(None, alias="ownerId")
+    status: Optional[str] = "active"
     images: List[str] = []
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

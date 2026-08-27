@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.booking import Booking
 from app.models.user import User
 from app.schemas.booking import BookingCreate, BookingResponse
+import datetime
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -15,8 +16,24 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 def list_bookings(all: bool = False, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         if all and current_user.is_admin:
-            return db.query(Booking).all()
-        return db.query(Booking).filter(Booking.user_id == current_user.id).all()
+            bookings = db.query(Booking).all()
+        else:
+            bookings = db.query(Booking).filter(Booking.user_id == current_user.id).all()
+        def to_resp(b: Booking):
+            duration = (b.end_time - b.start_time).total_seconds() / 3600.0
+            return {
+                "id": b.id,
+                "userId": b.user_id,
+                "client": getattr(b.user, 'email', None),
+                "spaceId": b.space_id,
+                "spaceName": getattr(b.space, 'title', None),
+                "startTime": b.start_time.isoformat(),
+                "durationHours": duration,
+                "totalAmount": float(b.total_price),
+                "status": b.status,
+                "created_at": b.created_at.isoformat(),
+            }
+        return [to_resp(b) for b in bookings]
     except Exception:
         return []
 
@@ -28,7 +45,19 @@ def get_booking(booking_id: int, current_user: User = Depends(get_current_user),
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized")
-    return booking
+    duration = (booking.end_time - booking.start_time).total_seconds() / 3600.0
+    return {
+        "id": booking.id,
+        "userId": booking.user_id,
+        "client": getattr(booking.user, 'email', None),
+        "spaceId": booking.space_id,
+        "spaceName": getattr(booking.space, 'title', None),
+        "startTime": booking.start_time.isoformat(),
+        "durationHours": duration,
+        "totalAmount": float(booking.total_price),
+        "status": booking.status,
+        "created_at": booking.created_at.isoformat(),
+    }
 
 
 @router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
