@@ -1,8 +1,5 @@
 node_modules
 
-#packages
-package.json
-package-lock.json
 .vscode/
 
 # Python
@@ -25,3 +22,4 @@ __pycache__/
 
 # Databases
 *.db
+
