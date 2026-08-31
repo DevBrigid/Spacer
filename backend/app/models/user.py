@@ -3,6 +3,7 @@ import enum
 from sqlalchemy import Column, DateTime, Enum as SAEnum, Integer, String, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy import event
 
 from app.database import Base
 
@@ -43,3 +44,10 @@ class User(Base):
         passive_deletes=True,
     )
     admin_logs = relationship("AdminLog", back_populates="admin")
+
+@event.listens_for(User.role, "set")
+def sync_is_admin_with_role(target, value, oldvalue, initiator):
+    """Keep is_admin in sync whenever role is set, so both fields
+    agree until the codebase fully migrates to role as the single
+    source of truth."""
+    target.is_admin = (value == UserRole.ADMIN or value == "admin")

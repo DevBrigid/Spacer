@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     jwt_secret: str
     cors_origins: str = ""
 
+    daraja_consumer_key: str
+    daraja_consumer_secret: str
+    daraja_shortcode: str
+    daraja_passkey: str
+    daraja_callback_url: str
+    daraja_base_url: str = "https://sandbox.safaricom.co.ke"
+
     model_config = SettingsConfigDict(
         env_file=(_REPO_ROOT / ".env", _BACKEND_DIR / ".env"),
         env_file_encoding="utf-8",

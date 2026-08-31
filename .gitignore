@@ -22,6 +22,7 @@ env/
 .env.*
 backend/.env
 __pycache__/
+.pytest_cache
 
 # Databases
 *.db

@@ -11,8 +11,6 @@ class Invoice(Base):
     
     # Invoice file tracking
     invoice_number = Column(String, unique=True, index=True, nullable=False)
-    pdf_path = Column(String, nullable=True)
-    sent_at = Column(DateTime(timezone=True), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
