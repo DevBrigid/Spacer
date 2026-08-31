@@ -1,24 +1,31 @@
-from pydantic import BaseModel, Field
-from typing import Any, Dict, Optional
+from decimal import Decimal
 from datetime import datetime
+from pydantic import BaseModel, ConfigDict
+
 
 class STKPushRequest(BaseModel):
-    booking_id: int = Field(..., alias="bookingId")
-    phone_number: str = Field(..., alias="phoneNumber")
-    amount: float
+    booking_id: int
+    amount: Decimal
+    phone_number: str  # format: 2547XXXXXXXX
+
 
 class STKPushCallbackSchema(BaseModel):
-    Body: Dict[str, Any]
+    MerchantRequestID: str
+    CheckoutRequestID: str
+    ResultCode: int
+    ResultDesc: str
+    CallbackMetadata: dict | None = None
+
 
 class PaymentResponse(BaseModel):
     id: int
-    booking_id: int = Field(..., alias="bookingId")
-    amount: float
-    status: str = Field("success", alias="payment_status")
-    receipt_number: Optional[str] = Field(None, alias="receiptNumber")
-    phone_number: Optional[str] = Field(None, alias="phoneNumber")
-    paid_at: Optional[datetime] = Field(default_factory=datetime.utcnow, alias="paidAt")
+    booking_id: int
+    amount: Decimal
+    phone_number: str
+    status: str
+    checkout_request_id: str | None = None
+    merchant_request_id: str | None = None
+    mpesa_receipt_number: str | None = None
+    created_at: datetime
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(from_attributes=True)

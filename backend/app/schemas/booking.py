@@ -4,7 +4,7 @@ from datetime import datetime
 
 class BookingCreate(BaseModel):
     space_id: int = Field(..., alias="spaceId")
-    user_id: Optional[int] = Field(None, alias="userId")
+    # user_id: Optional[int] = Field(None, alias="userId")
     start_time: str = Field(..., alias="startTime")
     end_time: Optional[str] = Field(None, alias="endTime")
     duration_hours: float = Field(..., alias="durationHours")
@@ -25,3 +25,4 @@ class BookingResponse(BaseModel):
     class Config:
         from_attributes = True
         populate_by_name = True
+        
