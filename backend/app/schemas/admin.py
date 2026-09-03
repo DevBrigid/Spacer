@@ -4,7 +4,11 @@ from typing import Optional
 class AdminUserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    phone_number: Optional[str] = Field(None, alias="phoneNumber")
     role: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
 
 class AdminSpaceUpdate(BaseModel):
     status: Optional[str] = None

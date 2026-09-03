@@ -3,8 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/authSlice';
 
 export default function ClientDashboard() {
-  const user = useSelector((state) => state.users.user || state.auth.currentUser);
-  const bookings = useSelector((state) => state.bookings.bookings);
+  const user = useSelector((state) => state.auth?.currentUser ?? state.users?.user ?? null);
+  const bookings = useSelector((state) => state.bookings?.bookings ?? []);
   const dispatch = useDispatch();
   const name = user?.name?.split(' ')[0] || 'there';
   const userBookings = bookings.filter((booking) => String(booking.userId) === String(user?.id));

@@ -1,28 +1,61 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { apiFetch } from '../utils/api';
 
-//simulates calling Mpesa STK Push + waiting for the callback result
 export const initiatePayment = createAsyncThunk(
     'payments/initiate',
-    async (paymentDetails) => {
-        // paymentDetails = { bookingId, amount, phoneNumber }
+    async (paymentDetails, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
 
-        //Fake network delay, like a real STK push prompt would take
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+            const payload = {
+                booking_id: Number(paymentDetails.bookingId),
+                amount: Number(paymentDetails.amount),
+                phone_number: String(paymentDetails.phoneNumber || '').replace(/\s+/g, ''),
+            };
 
-        //Fake successful response response - shaped like the real MPesa callback payload
-        return {
-            merchantRequestId: 'merchant' + Date.now(),
-            checkoutRequestId: 'checkout' + Date.now(),
-            receiptNumber: `SP${Date.now().toString().slice(-8)}`,
-            status: 'success',
-            resultDesc: 'The payment has been made successfully',
-            amount: paymentDetails.amount,
-            phoneNumber: paymentDetails.phoneNumber,
-            paidAt: new Date().toISOString(),
-        };
+            const response = await apiFetch('/payments/stkpush', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            }, token);
+
+            return {
+                merchantRequestId: response.merchant_request_id,
+                checkoutRequestId: response.checkout_request_id,
+                receiptNumber: response.mpesa_receipt_number,
+                status: String(response.status || 'pending').toLowerCase(),
+                resultDesc: response.status === 'PENDING' ? 'M-Pesa STK push sent to your phone.' : 'Payment request received.',
+                amount: Number(response.amount || paymentDetails.amount || 0),
+                phoneNumber: response.phone_number,
+                paidAt: response.created_at || new Date().toISOString(),
+            };
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
     }
 );
 
+export const fetchPaymentByBookingId = createAsyncThunk(
+    'payments/fetchByBookingId',
+    async (bookingId, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await apiFetch(`/payments/booking/${bookingId}`, {}, token);
+
+            return {
+                merchantRequestId: response.merchant_request_id,
+                checkoutRequestId: response.checkout_request_id,
+                receiptNumber: response.mpesa_receipt_number,
+                status: String(response.status || 'pending').toLowerCase(),
+                resultDesc: response.status === 'COMPLETED' ? 'Payment received.' : response.status === 'FAILED' ? 'Payment failed.' : 'M-Pesa STK push sent to your phone.',
+                amount: Number(response.amount || 0),
+                phoneNumber: response.phone_number,
+                paidAt: response.created_at || new Date().toISOString(),
+            };
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
 
 const paymentsSlice = createSlice({
     name:'payments',
@@ -65,7 +98,24 @@ const paymentsSlice = createSlice({
         })
         .addCase(initiatePayment.rejected, (state, action) => {
             state.status = 'failed';
-            state.resultDesc = action.error.message;
+            state.resultDesc = action.payload || action.error.message;
+        })
+        .addCase(fetchPaymentByBookingId.pending, (state) => {
+            state.status = state.status === 'idle' ? 'pending' : state.status;
+        })
+        .addCase(fetchPaymentByBookingId.fulfilled, (state, action) => {
+            state.status = action.payload.status;
+            state.merchantRequestId = action.payload.merchantRequestId;
+            state.checkoutRequestId = action.payload.checkoutRequestId;
+            state.resultDesc = action.payload.resultDesc;
+            state.amount = action.payload.amount;
+            state.phoneNumber = action.payload.phoneNumber;
+            state.receiptNumber = action.payload.receiptNumber;
+            state.paidAt = action.payload.paidAt;
+        })
+        .addCase(fetchPaymentByBookingId.rejected, (state, action) => {
+            state.status = 'failed';
+            state.resultDesc = action.payload || action.error.message;
         });
     },
 });

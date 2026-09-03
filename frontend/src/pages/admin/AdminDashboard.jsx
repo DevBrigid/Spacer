@@ -1,21 +1,39 @@
-import { useSelector } from "react-redux";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 
+import { fetchAdminSummary, fetchUsers } from "../../store/adminSlice";
+import { fetchAdminBookings } from "../../store/bookingsSlice";
+import { fetchSpaces } from "../../store/spacesSlice";
+
 function AdminDashboard() {
+  const dispatch = useDispatch();
   const spaces = useSelector((state) => state.spaces.spaces);
   const bookings = useSelector((state) => state.bookings.bookings);
   const currentUser = useSelector((state) => state.auth.currentUser);
+  const summary = useSelector((state) => state.admin.summary);
   const adminName = currentUser?.name || "Administrator";
 
-  const totalSpaces = spaces.length;
+  useEffect(() => {
+    dispatch(fetchAdminSummary());
+    dispatch(fetchUsers());
+    dispatch(fetchSpaces());
+    dispatch(fetchAdminBookings());
+  }, [dispatch]);
 
-  const availableSpaces = spaces.filter(
-    (space) => space.status === "Available"
-  ).length;
+  const totalSpaces = Number(summary.spaces || spaces.length || 0);
+  const totalUsers = Number(summary.users || 0);
+  const totalBookings = Number(summary.bookings || bookings.length || 0);
 
-  const bookedSpaces = spaces.filter(
-    (space) => space.status === "Booked"
-  ).length;
+  const availableSpaces = spaces.filter((space) => {
+    if (typeof space.is_available === 'boolean') return space.is_available;
+    return ['available', 'active', 'open'].includes(String(space.status || '').toLowerCase());
+  }).length;
+
+  const bookedSpaces = spaces.filter((space) => {
+    if (typeof space.is_available === 'boolean') return !space.is_available;
+    return ['booked', 'occupied', 'inactive'].includes(String(space.status || '').toLowerCase());
+  }).length;
 
   return (
     <div className="admin-page">
@@ -135,7 +153,17 @@ function AdminDashboard() {
             <span>Total Bookings</span>
 
             <h2>
-              {bookings.length}
+              {totalBookings}
+            </h2>
+
+          </div>
+
+          <div className="stat-card">
+
+            <span>Total Users</span>
+
+            <h2>
+              {totalUsers}
             </h2>
 
           </div>

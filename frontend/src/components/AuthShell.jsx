@@ -66,12 +66,12 @@ export function AuthTabs({ active }) {
   );
 }
 
-export function SocialButtons() {
+export function SocialButtons({ onClick }) {
   return (
     <div className="mt-5">
       <button
         type="button"
-        onClick={() => console.log("Google auth — not yet connected")}
+        onClick={onClick}
         className="w-full border border-gray-300 py-2.5 text-sm transition-colors hover:border-black hover:bg-gray-50"
       >
         Continue with Google

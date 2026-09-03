@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import mockDatabase from '../../database/db.json';
 import { initiatePayment } from '../../store/paymentsSlice';
 import { addBooking } from '../../store/bookingsSlice';
-import { cancelReservation, reserveTimeSlot, updateReservationStatus } from '../../utils/bookingAvailability';
+import { cancelReservation, reserveTimeSlot } from '../../utils/bookingAvailability';
 
 export default function PaymentPage() {
   const dispatch = useDispatch();
@@ -12,14 +11,25 @@ export default function PaymentPage() {
   const payment = useSelector((state) => state.payments);
   const booking = useSelector((state) => state.bookings);
   const user = useSelector((state) => state.auth.currentUser);
+  const token = useSelector((state) => state.auth.token);
+  const hasPendingBooking = Boolean(booking.activeBookingId);
+  const spaces = useSelector((state) => state.spaces.spaces);
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || '');
   const [bookingError, setBookingError] = useState('');
   const [isReserving, setIsReserving] = useState(false);
-  const space = mockDatabase.spaces.find((item) => String(item.id) === String(booking.selectedSpaceId));
-  const subtotal = booking.totalAmount || 0;
-  const serviceFee = Math.round(subtotal * 0.05);
-  const tax = Math.round((subtotal + serviceFee) * 0.16);
-  const total = subtotal + serviceFee + tax;
+  const space = spaces.find((item) => String(item.id) === String(booking.selectedSpaceId)) || {
+    id: booking.selectedSpaceId,
+    name: booking.spaceName || 'Selected space',
+    location: booking.spaceLocation || 'Location unavailable',
+    pricePerHour: 0,
+  };
+  const storedBookingTotal = Number(booking.totalAmount || 0);
+  // A booking that is being resumed already stores its all-in amount. Do not
+  // calculate service fees and tax a second time when sending a new STK prompt.
+  const subtotal = storedBookingTotal;
+  const serviceFee = hasPendingBooking ? 0 : Math.round(subtotal * 0.05);
+  const tax = hasPendingBooking ? 0 : Math.round((subtotal + serviceFee) * 0.16);
+  const total = hasPendingBooking ? storedBookingTotal : subtotal + serviceFee + tax;
   const isValidPhone = /^\+?254\d{9}$|^0\d{9}$/.test(phoneNumber.replace(/\s/g, ''));
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -28,21 +38,27 @@ export default function PaymentPage() {
     setIsReserving(true);
     let reservation;
     try {
-      reservation = await reserveTimeSlot({ spaceId: space.id, spaceName: space.name, userId: user?.id, startTime: booking.startTime, endTime: booking.endTime, durationHours: booking.durationHours, totalAmount: total });
+      if (hasPendingBooking) {
+        const result = await dispatch(initiatePayment({ bookingId: booking.activeBookingId, amount: total, phoneNumber }));
+        if (!initiatePayment.fulfilled.match(result)) throw new Error('Payment request could not be sent.');
+        navigate('/spacer/invoice');
+        return;
+      }
+
+      reservation = await reserveTimeSlot({ spaceId: space.id, spaceName: space.name, userId: user?.id, startTime: booking.startTime, endTime: booking.endTime, durationHours: booking.durationHours, totalAmount: total, token });
       const result = await dispatch(initiatePayment({ bookingId: reservation.id, amount: total, phoneNumber }));
-      if (!initiatePayment.fulfilled.match(result)) throw new Error('Payment was not completed.');
-      await updateReservationStatus(reservation.id, 'confirmed');
-      dispatch(addBooking({ id: reservation.id, userId: user?.id, client: user?.name || 'Spacer Client', space: space.name, date: booking.startTime?.split('T')[0], duration: booking.durationHours, amount: total, status: 'Confirmed' }));
+      if (!initiatePayment.fulfilled.match(result)) throw new Error('Payment request could not be sent.');
+      dispatch(addBooking({ id: reservation.id, userId: user?.id, client: user?.name || 'Spacer Client', space: space.name, date: booking.startTime?.split('T')[0], duration: booking.durationHours, amount: total, status: 'Pending' }));
       navigate('/spacer/invoice');
     } catch (error) {
-      if (reservation?.id) await cancelReservation(reservation.id);
+      if (reservation?.id) await cancelReservation(reservation.id, token);
       setBookingError(error.message || 'Your booking could not be completed.');
     } finally {
       setIsReserving(false);
     }
   };
 
-  if (!space || !subtotal) return <main className="mx-auto max-w-3xl px-6 py-16"><h1 className="text-2xl font-semibold">Your booking details are missing.</h1><p className="mt-3 text-sm text-stone-600">Choose a space and time before continuing to payment.</p><Link to="/spaces" className="mt-5 inline-block text-sm font-medium underline underline-offset-4">Browse spaces</Link></main>;
+  if (!booking.selectedSpaceId && !booking.spaceName) return <main className="mx-auto max-w-3xl px-6 py-16"><h1 className="text-2xl font-semibold">Your booking details are missing.</h1><p className="mt-3 text-sm text-stone-600">Choose a space and time before continuing to payment.</p><Link to="/spaces" className="mt-5 inline-block text-sm font-medium underline underline-offset-4">Browse spaces</Link></main>;
 
   return (
       <div className="public-page checkout-page">

@@ -20,9 +20,9 @@ class BookingResponse(BaseModel):
     duration: float = Field(..., alias="durationHours")
     amount: float = Field(..., alias="totalAmount")
     status: str
+    payment_status: Optional[str] = Field(None, alias="paymentStatus")
     created_at: datetime
 
     class Config:
         from_attributes = True
         populate_by_name = True
-        

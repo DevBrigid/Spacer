@@ -1,56 +1,49 @@
-const API_URL = 'http://localhost:3001';
+import { apiFetch } from './api';
+
 const BLOCKING_STATUSES = new Set(['pending', 'confirmed', 'approved']);
 
 export const hasBookingConflict = (bookings, spaceId, startTime, endTime) => bookings.some((booking) => (
-  String(booking.space_id) === String(spaceId)
+  String(booking.space_id ?? booking.spaceId) === String(spaceId)
   && BLOCKING_STATUSES.has(String(booking.status).toLowerCase())
-  && new Date(startTime) < new Date(booking.end_time)
-  && new Date(endTime) > new Date(booking.start_time)
+  && new Date(startTime) < new Date(booking.end_time ?? booking.endTime)
+  && new Date(endTime) > new Date(booking.start_time ?? booking.startTime)
 ));
 
-async function getBookings() {
-  const response = await fetch(`${API_URL}/bookings`);
-  if (!response.ok) throw new Error('We could not check availability. Please try again.');
-  return response.json();
+async function getBookings(spaceId) {
+  const bookings = await apiFetch(`/spaces/${spaceId}/bookings`);
+  return Array.isArray(bookings) ? bookings : [];
 }
 
 export async function assertTimeSlotAvailable(spaceId, startTime, endTime) {
-  const bookings = await getBookings();
+  const bookings = await getBookings(spaceId);
   if (hasBookingConflict(bookings, spaceId, startTime, endTime)) {
     throw new Error('This time slot was just booked by another client. Please choose another time.');
   }
 }
 
-export async function reserveTimeSlot({ spaceId, spaceName, userId, startTime, endTime, durationHours, totalAmount }) {
+export async function reserveTimeSlot({ spaceId, spaceName, userId, startTime, endTime, durationHours, totalAmount, token }) {
   await assertTimeSlotAvailable(spaceId, startTime, endTime);
-  const response = await fetch(`${API_URL}/bookings`, {
+  return apiFetch('/spacer/my/bookings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      space_id: spaceId,
-      space_name: spaceName,
-      user_id: userId,
-      start_time: startTime,
-      end_time: endTime,
-      duration_hours: durationHours,
-      total_amount: totalAmount,
-      status: 'pending',
+      spaceId,
+      spaceName,
+      userId,
+      startTime,
+      endTime,
+      durationHours,
+      totalAmount,
     }),
-  });
-  if (!response.ok) throw new Error('We could not reserve this time slot. Please try again.');
-  return response.json();
+  }, token);
 }
 
-export async function updateReservationStatus(id, status) {
-  const response = await fetch(`${API_URL}/bookings/${id}`, {
+export async function updateReservationStatus(id, status, token) {
+  return apiFetch(`/spacer/my/bookings/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
-  });
-  if (!response.ok) throw new Error('Your reservation could not be confirmed.');
-  return response.json();
+  }, token);
 }
 
-export async function cancelReservation(id) {
-  await fetch(`${API_URL}/bookings/${id}`, { method: 'DELETE' });
+export async function cancelReservation(id, token) {
+  await apiFetch(`/spacer/my/bookings/${id}`, { method: 'DELETE' }, token);
 }

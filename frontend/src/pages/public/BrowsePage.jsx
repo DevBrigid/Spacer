@@ -26,12 +26,13 @@ export default function BrowsePage() {
   );
 
   const filteredSpaces = useMemo(() => spaces.filter((space) => {
+    const pricePerHour = Number(space.pricePerHour ?? space.price_per_hour ?? 0);
     const searchableText = `${space.name} ${space.description} ${space.location}`.toLowerCase();
     const matchesSearch = searchableText.includes(query.trim().toLowerCase());
     const matchesLocation = location === 'All locations' || space.location === location;
     const matchesAvailability = availability === 'All spaces' || space.status.toLowerCase() === availability;
     const matchesCapacity = minimumCapacity === 'Any capacity' || space.capacity >= Number(minimumCapacity);
-    const matchesPrice = maximumPrice === 'Any price' || space.pricePerHour <= Number(maximumPrice);
+    const matchesPrice = maximumPrice === 'Any price' || pricePerHour <= Number(maximumPrice);
     return matchesSearch && matchesLocation && matchesAvailability && matchesCapacity && matchesPrice;
   }), [availability, location, maximumPrice, minimumCapacity, query, spaces]);
 
@@ -79,12 +80,17 @@ export default function BrowsePage() {
         {!isLoading && filteredSpaces.length === 0 ? <div className="mt-8 border border-dashed border-stone-300 bg-white p-10 text-center"><p className="font-medium text-stone-900">No spaces match these filters.</p><button onClick={resetFilters} className="mt-3 text-sm font-medium underline underline-offset-4">Show all spaces</button></div> : null}
 
         {!isLoading && filteredSpaces.length > 0 ? <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredSpaces.map((space) => <article key={space.id} className="group overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
-            <div className="relative overflow-hidden"><img src={Array.isArray(space.images) ? space.images[0] : space.images} alt={space.name} className="h-56 w-full object-cover transition duration-500 group-hover:scale-105" /><span className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-medium capitalize ${space.status.toLowerCase() === 'available' ? 'bg-white/95 text-emerald-700' : 'bg-stone-900/90 text-white'}`}>{space.status}</span></div>
-            <div className="p-5"><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{space.location}</p><h3 className="mt-2 text-lg font-semibold text-stone-950">{space.name}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-stone-600">{space.description}</p>
-              <div className="mt-5 flex items-end justify-between gap-3 border-t border-stone-100 pt-4"><div><p className="text-base font-semibold text-stone-950">KES {formatPrice(space.pricePerHour)}</p><p className="text-xs text-stone-500">per hour · up to {space.capacity} guests</p></div><button onClick={() => navigate(`/spaces/${space.id}`)} className="shrink-0 bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-stone-700">View space</button></div>
-            </div>
-          </article>)}
+          {filteredSpaces.map((space) => {
+            const pricePerHour = Number(space.pricePerHour ?? space.price_per_hour ?? 0);
+            return (
+              <article key={space.id} className="group overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+                <div className="relative overflow-hidden"><img src={Array.isArray(space.images) ? space.images[0] : space.images} alt={space.name} className="h-56 w-full object-cover transition duration-500 group-hover:scale-105" /><span className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-medium capitalize ${space.status.toLowerCase() === 'available' ? 'bg-white/95 text-emerald-700' : 'bg-stone-900/90 text-white'}`}>{space.status}</span></div>
+                <div className="p-5"><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{space.location}</p><h3 className="mt-2 text-lg font-semibold text-stone-950">{space.name}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-stone-600">{space.description}</p>
+                  <div className="mt-5 flex items-end justify-between gap-3 border-t border-stone-100 pt-4"><div><p className="text-base font-semibold text-stone-950">KES {formatPrice(pricePerHour)}</p><p className="text-xs text-stone-500">per hour · up to {space.capacity} guests</p></div><button onClick={() => navigate(`/spaces/${space.id}`)} className="shrink-0 bg-black px-3 py-2 text-xs font-medium text-white transition hover:bg-stone-700">View space</button></div>
+                </div>
+              </article>
+            );
+          })}
         </div> : null}
       </main>
     </div>

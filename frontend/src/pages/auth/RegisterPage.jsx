@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { registerUser } from "../../store/authSlice";
+import { completeInviteSignup, registerUser } from "../../store/authSlice";
 import { AuthShell, AuthTabs, SocialButtons } from "../../components/AuthShell";
 import { getDashboardPath } from "../../utils/roleNavigation";
+import { supabase } from "../../lib/supabase";
 
 function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const { status, error } = useSelector((state) => state.auth);
+  const inviteToken = new URLSearchParams(location.search).get("invite");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -33,9 +35,37 @@ function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
+
+    if (inviteToken) {
+      const result = await dispatch(completeInviteSignup({ token: inviteToken, password: formData.password, phone_number: formData.phone_number }));
+      if (completeInviteSignup.fulfilled.match(result)) {
+        navigate(getDashboardPath(result.payload.user), { replace: true });
+      }
+      return;
+    }
+
     const result = await dispatch(registerUser(formData));
     if (registerUser.fulfilled.match(result)) {
       navigate(getDashboardPath(result.payload.user), { replace: true });
+    }
+  };
+
+  const handleGoogleContinue = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("Google sign-in failed", error);
+      navigate("/register", {
+        state: {
+          email: formData.email,
+          message: "Google sign-in could not start. Please try again or continue with email.",
+        },
+      });
     }
   };
 
@@ -57,7 +87,7 @@ function RegisterPage() {
           <AuthTabs active="register" />
         </div>
 
-        <SocialButtons />
+        <SocialButtons onClick={handleGoogleContinue} />
 
         <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-gray-200" />

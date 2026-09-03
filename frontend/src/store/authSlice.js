@@ -1,76 +1,61 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import mockDatabase from "../database/db.json";
+import { apiFetch } from "../utils/api";
+import { assertSupabaseConfigured, getSupabaseSession, supabase } from '../lib/supabase';
 
-const API_URL = 'http://localhost:3001';
-const LOCAL_USERS_KEY = 'spacer-local-users';
 const CURRENT_USER_KEY = 'spacer-current-user';
 
-const createMockToken = (userId) => `mock-token-${userId}`;
-const getUserIdFromToken = (token) => Number(token?.replace('mock-token-', ''));
 const publicUser = (user) => {
     const sanitizedUser = { ...user };
     delete sanitizedUser.password;
+    delete sanitizedUser.hashed_password;
     return sanitizedUser;
 };
-const readLocalUsers = () => {
-    try { return JSON.parse(localStorage.getItem(LOCAL_USERS_KEY) || '[]'); } catch { return []; }
-};
-const saveLocalUser = (user) => localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify([...readLocalUsers(), user]));
-const fallbackUsers = () => [...mockDatabase.users, ...readLocalUsers()];
-
-async function findUsersByEmail(email) {
-    try {
-        const response = await fetch(`${API_URL}/users?email=${encodeURIComponent(email)}`);
-        if (!response.ok) throw new Error('Mock API unavailable');
-        return await response.json();
-    } catch {
-        return fallbackUsers().filter((user) => user.email.toLowerCase() === email.toLowerCase());
-    }
-}
-
-async function findUserById(id) {
-    try {
-        const response = await fetch(`${API_URL}/users/${id}`);
-        if (!response.ok) throw new Error('Mock API unavailable');
-        return await response.json();
-    } catch {
-        return fallbackUsers().find((user) => String(user.id) === String(id)) || null;
-    }
-}
 
 export const registerUser = createAsyncThunk(
     'auth/registerUser',
     async (userData, { rejectWithValue }) => {
         try {
-            if ((await findUsersByEmail(userData.email)).length) throw new Error('An account already exists with this email');
+            const response = await apiFetch('/auth/supabase/register', {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: userData.email,
+                    password: userData.password,
+                    name: userData.name || userData.full_name,
+                    phone_number: userData.phone_number || userData.phoneNumber || '',
+                }),
+            });
 
-            const newUser = { id: Date.now(), ...userData, role: 'Client', status: 'Active' };
-            let user = newUser;
-            try {
-                const res = await fetch(`${API_URL}/users`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify(newUser),
-                });
-                if (!res.ok) throw new Error('Mock API unavailable');
-                user = await res.json();
-            } catch {
-                saveLocalUser(newUser);
+            if (!response?.access_token) {
+                throw new Error('Registration succeeded but no access token was returned.');
             }
-            return { user: publicUser(user), token: createMockToken(user.id) };
+
+            return { user: publicUser(response.user), token: response.access_token };
         } catch (error) {
             return rejectWithValue(error.message);
         }
     }
 );
 
-
 export const loginUser = createAsyncThunk(
     'auth/loginUser',
-    async (credentials , { rejectWithValue }) => {
-        try{
-            const [user] = await findUsersByEmail(credentials.email);
-            if (!user) return rejectWithValue('ACCOUNT_NOT_FOUND');
-            if (user.password !== credentials.password) throw new Error('Invalid email or password');
-            return { user: publicUser(user), token: createMockToken(user.id) };
+    async (credentials, { rejectWithValue }) => {
+        try {
+            assertSupabaseConfigured();
+            if (!credentials?.email || !credentials?.password) {
+                return rejectWithValue('Email and password are required.');
+            }
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: credentials.email,
+                password: credentials.password,
+            });
+            if (error) throw error;
+            if (!data.session) throw new Error('Authentication failed: no Supabase session was returned.');
+            const response = await apiFetch('/auth/supabase/session', {
+                method: 'POST',
+                body: JSON.stringify({ access_token: data.session.access_token }),
+            });
+            return { user: publicUser(response.user), token: response.access_token };
         } catch (error) {
             return rejectWithValue(error.message);
         }
@@ -81,10 +66,68 @@ export const requestPasswordReset = createAsyncThunk(
   'auth/requestPasswordReset',
   async (email, { rejectWithValue }) => {
     try {
-      const res = await fetch(`${API_URL}/users?email=${encodeURIComponent(email)}`);
-      if (!res.ok) throw new Error('Unable to reach the mock API');
-      if (!(await res.json()).length) throw new Error('No account found with this email');
-      return email;
+      const response = await apiFetch('/auth/password-reset', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const confirmPasswordReset = createAsyncThunk(
+  'auth/confirmPasswordReset',
+  async ({ token, password }, { rejectWithValue }) => {
+    try {
+      const response = await apiFetch('/auth/password-reset-confirm', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
+      });
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const completeInviteSignup = createAsyncThunk(
+  'auth/completeInviteSignup',
+  async ({ token, password, phone_number }, { rejectWithValue }) => {
+    try {
+      const response = await apiFetch('/auth/invite/accept', {
+        method: 'POST',
+        body: JSON.stringify({ token, password, phone_number }),
+      });
+      const tokenValue = response?.access_token;
+      if (!tokenValue) {
+        throw new Error('Invite setup failed: no access token returned.');
+      }
+      return { user: publicUser(response.user || response), token: tokenValue };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const completeGoogleLogin = createAsyncThunk(
+  'auth/completeGoogleLogin',
+  async (_, { rejectWithValue }) => {
+    try {
+      const session = await getSupabaseSession();
+      if (!session?.access_token) {
+        throw new Error('Google sign-in did not return a Supabase session.');
+      }
+      const response = await apiFetch('/auth/supabase/session', {
+        method: 'POST',
+        body: JSON.stringify({ access_token: session.access_token }),
+      });
+      const token = response?.access_token;
+      if (!token) {
+        throw new Error('Google sign-in failed: no access token returned.');
+      }
+      return { user: publicUser(response.user), token };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -95,21 +138,10 @@ export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { getState, rejectWithValue }) => {
     try {
-      const userId = getUserIdFromToken(getState().auth.token);
-      if (!userId) throw new Error('Session Expired');
-      try {
-        const res = await fetch(`${API_URL}/users/${userId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileData),
-        });
-        if (!res.ok) throw new Error('Failed to update profile');
-        return publicUser(await res.json());
-      } catch {
-        const currentUser = await findUserById(userId);
-        if (!currentUser) throw new Error('Failed to update profile');
-        return publicUser({ ...currentUser, ...profileData });
-      }
+      const token = getState().auth.token;
+      const payload = { full_name: profileData.name || profileData.full_name, phone_number: profileData.phone_number || profileData.phoneNumber };
+      const user = await apiFetch('/spacer/profile', { method: 'PUT', body: JSON.stringify(payload) }, token);
+      return publicUser(user);
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -119,11 +151,10 @@ export const updateProfile = createAsyncThunk(
 export const fetchCurrentUser = createAsyncThunk(
     'auth/fetchCurrentUser',
     async (token, { getState, rejectWithValue}) => {
-        try{
-            const userId = getUserIdFromToken(token || getState().auth.token);
-            if (!userId) throw new Error('Session Expired');
-            const user = await findUserById(userId);
-            if (!user) throw new Error('Session Expired');
+        try {
+            const activeToken = token || getState().auth.token;
+            if (!activeToken) throw new Error('Session Expired');
+            const user = await apiFetch('/spacer/profile', {}, activeToken);
             return publicUser(user);
         } catch(error) {
             return rejectWithValue(error.message);
@@ -135,21 +166,12 @@ export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async ({ currentPassword, newPassword }, { getState, rejectWithValue }) => {
     try {
-      const userId = getUserIdFromToken(getState().auth.token);
-      if (!userId) throw new Error('Session Expired');
-      const userResponse = await fetch(`${API_URL}/users/${userId}`);
-      if (!userResponse.ok) throw new Error('Session Expired');
-      const user = await userResponse.json();
-      if (user.password !== currentPassword) throw new Error('Current password is incorrect');
-      const res = await fetch(`${API_URL}/users/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: newPassword }),
-      });
-      if (!res.ok) throw new Error('Failed to update password');
-      return await res.json();
+      const token = getState().auth.token;
+      const response = await apiFetch('/spacer/profile/password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }, token);
+      return response;
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -173,6 +195,7 @@ const authSlice = createSlice({
             state.isAuthenticated = false;
             localStorage.removeItem('token')
             localStorage.removeItem(CURRENT_USER_KEY)
+            supabase.auth.signOut();
         },
         loadUserFromStorage: (state) => {
             const token = localStorage.getItem('token');
@@ -277,6 +300,52 @@ const authSlice = createSlice({
             state.status = 'succeeded';
         })
         .addCase(requestPasswordReset.rejected, (state, action) => {
+            state.status = 'failed';
+            state.error = action.payload;
+        })
+        .addCase(confirmPasswordReset.pending, (state) => {
+            state.status = 'loading';
+            state.error = null;
+        })
+        .addCase(confirmPasswordReset.fulfilled, (state) => {
+            state.status = 'succeeded';
+            state.error = null;
+        })
+        .addCase(confirmPasswordReset.rejected, (state, action) => {
+            state.status = 'failed';
+            state.error = action.payload;
+        })
+        .addCase(completeInviteSignup.pending, (state) => {
+            state.status = 'pending';
+            state.error = null;
+        })
+        .addCase(completeInviteSignup.fulfilled, (state, action) => {
+            state.status = 'succeeded';
+            state.currentUser = action.payload.user;
+            state.token = action.payload.token;
+            state.isAuthenticated = true;
+            state.authChecked = true;
+            localStorage.setItem('token', action.payload.token);
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(action.payload.user));
+        })
+        .addCase(completeInviteSignup.rejected, (state, action) => {
+            state.status = 'failed';
+            state.error = action.payload;
+        })
+        .addCase(completeGoogleLogin.pending, (state) => {
+            state.status = 'pending';
+            state.error = null;
+        })
+        .addCase(completeGoogleLogin.fulfilled, (state, action) => {
+            state.status = 'succeeded';
+            state.currentUser = action.payload.user;
+            state.token = action.payload.token;
+            state.isAuthenticated = true;
+            state.authChecked = true;
+            localStorage.setItem('token', action.payload.token);
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(action.payload.user));
+        })
+        .addCase(completeGoogleLogin.rejected, (state, action) => {
             state.status = 'failed';
             state.error = action.payload;
         })

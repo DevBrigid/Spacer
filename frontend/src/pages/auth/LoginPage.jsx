@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { clearAuthError, loginUser } from "../../store/authSlice";
 import { AuthShell, AuthTabs, SocialButtons } from "../../components/AuthShell";
 import { getDashboardPath } from "../../utils/roleNavigation";
+import { supabase } from "../../lib/supabase";
 
 function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { status, error } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -34,17 +36,42 @@ function LoginPage() {
     }
   };
 
+  const handleGoogleContinue = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: import.meta.env.VITE_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("Google sign-in failed", error);
+      navigate("/login", {
+        state: {
+          email: formData.email,
+          message: "Google sign-in could not start. Please try again or log in with email.",
+        },
+      });
+    }
+  };
+
   return (
     <AuthShell>
       <div className="w-full max-w-sm border border-gray-200 p-8">
         <h1 className="text-xl font-semibold">Welcome back</h1>
         <p className="mt-1 text-sm text-gray-500">Log in to book your next space.</p>
 
+        {location.state?.message && (
+          <p className="mt-4 border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            {location.state.message}
+          </p>
+        )}
+
         <div className="mt-5">
           <AuthTabs active="login" />
         </div>
 
-        <SocialButtons />
+        <SocialButtons onClick={handleGoogleContinue} />
 
         <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-gray-200" />

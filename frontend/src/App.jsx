@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import { loadUserFromStorage, fetchCurrentUser } from './store/authSlice';
+import { fetchBookings } from './store/bookingsSlice';
 
 import PrivateRoute from './routes/PrivateRoute';
 import AdminRoute from './routes/AdminRoute';
@@ -14,6 +15,8 @@ import AdminLayout from './layouts/AdminLayout';
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import AuthCallbackPage from './pages/auth/AuthCallbackPage';
 
 import LandingPage from './pages/public/LandingPage';
 import BrowsePage from './pages/public/BrowsePage';
@@ -46,6 +49,7 @@ function App() {
   useEffect(() => {
     if (token) {
       dispatch(fetchCurrentUser(token));
+      dispatch(fetchBookings());
     }
   }, [token, dispatch]);
 
@@ -64,6 +68,8 @@ function App() {
           <Route path='/login' element={<LoginPage />} />
           <Route path='/register' element={<RegisterPage />} />
           <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+          <Route path='/reset-password' element={<ResetPasswordPage />} />
+          <Route path='/auth/callback' element={<AuthCallbackPage />} />
           <Route path='/agreement' element={<AgreementPage />} />
           <Route path='/terms' element={<TermsOfService />} />
           <Route path='/privacy' element={<PrivacyPolicy />} />

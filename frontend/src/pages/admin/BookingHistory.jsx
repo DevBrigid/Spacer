@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
-import {
-  approveBooking,
-  rejectBooking,
-  fetchBookings,
-} from "../../store/bookingsSlice";
+import { fetchAdminBookings } from "../../store/bookingsSlice";
 
 function BookingHistory() {
   const dispatch = useDispatch();
@@ -15,7 +11,7 @@ function BookingHistory() {
   const [filter, setFilter] = useState("All");
 
   useEffect(() => {
-    dispatch(fetchBookings());
+    dispatch(fetchAdminBookings());
   }, [dispatch]);
 
   const filteredBookings =
@@ -40,7 +36,7 @@ function BookingHistory() {
           </div>
 
           <div className="filter-buttons">
-            {["All", "Pending", "Approved", "Rejected"].map((status) => (
+            {["All", "Pending", "Confirmed"].map((status) => (
               <button
                 key={status}
                 className={
@@ -60,23 +56,17 @@ function BookingHistory() {
           <table>
             <thead>
               <tr>
-                <th>Client</th>
                 <th>Space</th>
                 <th>Date</th>
                 <th>Duration</th>
                 <th>Amount</th>
                 <th>Status</th>
-                <th>Actions</th>
               </tr>
             </thead>
 
             <tbody>
               {filteredBookings.map((booking) => (
                 <tr key={booking.id}>
-                  <td>
-                    <strong>{booking.client}</strong>
-                  </td>
-
                   <td>{booking.space}</td>
 
                   <td>{booking.date}</td>
@@ -89,26 +79,6 @@ function BookingHistory() {
                     <span className={`status ${booking.status.toLowerCase()}`}>
                       {booking.status}
                     </span>
-                  </td>
-
-                  <td>
-                    {booking.status === "Pending" && (
-                      <>
-                        <button
-                          className="table-button"
-                          onClick={() => dispatch(approveBooking(booking.id))}
-                        >
-                          Approve
-                        </button>
-
-                        <button
-                          className="delete-button"
-                          onClick={() => dispatch(rejectBooking(booking.id))}
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
                   </td>
                 </tr>
               ))}

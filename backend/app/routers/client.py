@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
+from app.config import settings
 from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
@@ -11,6 +12,7 @@ from app.schemas.booking import BookingCreate, BookingResponse
 from app.schemas.user import UserResponse, UserUpdate
 from app.schemas.user import UserResponse, ChangePasswordRequest
 from app.core.security import hash_password, verify_password
+from app.services import supabase_auth_service
 import datetime
 from datetime import timedelta
 
@@ -53,6 +55,7 @@ def _booking_to_resp(b: Booking):
         "durationHours": duration,
         "totalAmount": float(b.total_price),
         "status": b.status,
+        "paymentStatus": getattr(getattr(b, "payment", None), "status", None),
         "created_at": b.created_at.isoformat(),
     }
 
@@ -139,6 +142,9 @@ def update_profile(data: UserUpdate, current_user: User = Depends(get_current_us
 def change_password(request: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not verify_password(request.current_password, current_user.hashed_password):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    if settings.supabase_is_configured and current_user.email:
+        supabase_auth_service.update_user_password_by_email(current_user.email, request.new_password)
 
     current_user.hashed_password = hash_password(request.new_password)
     db.commit()

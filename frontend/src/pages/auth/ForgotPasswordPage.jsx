@@ -9,12 +9,21 @@ function ForgotPasswordPage() {
 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [resetToken, setResetToken] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await dispatch(requestPasswordReset(email));
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) return;
+
+    const result = await dispatch(requestPasswordReset(trimmedEmail));
     if (requestPasswordReset.fulfilled.match(result)) {
       setSent(true);
+      setEmail(trimmedEmail);
+      setResetToken(result.payload?.reset_token || "");
+    } else {
+      setSent(false);
+      setResetToken("");
     }
   };
 
@@ -35,7 +44,16 @@ function ForgotPasswordPage() {
         </div>
 
         {error && <p className="error-message">{error}</p>}
-        {sent && <p className="saved-message">Check your email for a reset link.</p>}
+        {sent && (
+          <div className="saved-message">
+            <p>Check your email for a reset link.</p>
+            {resetToken && (
+              <p style={{ marginTop: "8px" }}>
+                <Link to={`/reset-password?token=${encodeURIComponent(resetToken)}`}>Set a new password now</Link>
+              </p>
+            )}
+          </div>
+        )}
 
         <button type="submit" className="primary-button" disabled={status === "loading"}>
           {status === "loading" ? "Sending..." : "Send Reset Link"}

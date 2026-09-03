@@ -1,35 +1,78 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import mockDatabase from '../database/db.json';
+import { apiFetch } from '../utils/api';
 
-const API_URL = 'http://localhost:3001';
-const normalizeSpace = (space) => ({ id: space.id, name: space.name, location: space.location, latitude: space.latitude, longitude: space.longitude, images: space.images, pricePerHour: space.price_per_hour, capacity: space.capacity, description: space.description, status: space.status ? space.status.charAt(0).toUpperCase() + space.status.slice(1) : 'Available' });
-const toApiSpace = ({ pricePerHour, status, imageUrl, images, ...space }) => ({
-  ...space,
-  price_per_hour: Number(pricePerHour),
-  status: status.toLowerCase(),
-  images: imageUrl ? [imageUrl] : images || ['https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80'],
-});
-const localSpaces = () => mockDatabase.spaces.map(normalizeSpace);
+const DEFAULT_SPACE_IMAGE = 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80';
+
+const normalizeSpace = (space) => {
+  const rawImages = Array.isArray(space.images)
+    ? space.images
+    : (space.image_url || space.imageUrl)
+      ? [space.image_url || space.imageUrl]
+      : (typeof space.images === 'string' ? [space.images] : []);
+
+  const available = typeof space.is_available === 'boolean'
+    ? space.is_available
+    : (typeof space.status === 'string'
+      ? ['available', 'active', 'open'].includes(space.status.toLowerCase())
+      : true);
+
+  return {
+    id: space.id,
+    name: space.name || space.title,
+    location: space.location,
+    latitude: space.latitude ?? space.coordinates?.latitude ?? null,
+    longitude: space.longitude ?? space.coordinates?.longitude ?? null,
+    images: rawImages.length ? rawImages : [DEFAULT_SPACE_IMAGE],
+    pricePerHour: Number(space.pricePerHour ?? space.price_per_hour ?? 0),
+    capacity: Number(space.capacity ?? 0),
+    description: space.description || '',
+    is_available: available,
+    status: available ? 'Available' : 'Booked',
+  };
+};
+
+const toApiSpace = ({ pricePerHour, status, imageUrl, images, latitude, longitude, ...space }) => {
+  const normalizedLatitude = latitude != null && latitude !== '' ? Number(latitude) : null;
+  const normalizedLongitude = longitude != null && longitude !== '' ? Number(longitude) : null;
+
+  return {
+    ...space,
+    pricePerHour: Number(pricePerHour),
+    status: status ? status.toLowerCase() : 'active',
+    images: imageUrl ? [imageUrl] : images || [],
+    latitude: normalizedLatitude,
+    longitude: normalizedLongitude,
+    coordinates: normalizedLatitude != null && normalizedLongitude != null
+      ? { latitude: normalizedLatitude, longitude: normalizedLongitude }
+      : null,
+  };
+};
+
 export const fetchSpaces = createAsyncThunk('spaces/fetchAll', async (_, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_URL}/spaces`);
-    if (!response.ok) throw new Error('Unable to load spaces.');
-    return (await response.json()).map(normalizeSpace);
+    const data = await apiFetch('/spaces/');
+    return (Array.isArray(data) ? data : []).map(normalizeSpace);
   } catch (error) {
     return rejectWithValue(error.message);
   }
 });
-export const fetchSpaceById = createAsyncThunk('spaces/fetchOne', async (id) => localSpaces().find((space) => String(space.id) === String(id)) || null);
+
+export const fetchSpaceById = createAsyncThunk('spaces/fetchOne', async (id, { rejectWithValue }) => {
+  try {
+    const space = await apiFetch(`/spaces/${id}`);
+    return normalizeSpace(space);
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
+});
 
 export const createSpace = createAsyncThunk('spaces/create', async (space, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_URL}/spaces`, {
+    const data = await apiFetch('/spaces/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(toApiSpace(space)),
     });
-    if (!response.ok) throw new Error('The space could not be saved.');
-    return normalizeSpace(await response.json());
+    return normalizeSpace(data);
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -37,13 +80,11 @@ export const createSpace = createAsyncThunk('spaces/create', async (space, { rej
 
 export const saveSpace = createAsyncThunk('spaces/save', async ({ id, ...space }, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_URL}/spaces/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    const data = await apiFetch(`/spaces/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(toApiSpace(space)),
     });
-    if (!response.ok) throw new Error('The space could not be updated.');
-    return normalizeSpace(await response.json());
+    return normalizeSpace(data);
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -51,8 +92,7 @@ export const saveSpace = createAsyncThunk('spaces/save', async ({ id, ...space }
 
 export const removeSpace = createAsyncThunk('spaces/remove', async (id, { rejectWithValue }) => {
   try {
-    const response = await fetch(`${API_URL}/spaces/${id}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('The space could not be deleted.');
+    await apiFetch(`/spaces/${id}`, { method: 'DELETE' });
     return id;
   } catch (error) {
     return rejectWithValue(error.message);
@@ -61,12 +101,12 @@ export const removeSpace = createAsyncThunk('spaces/remove', async (id, { reject
 
 const spaceSlice = createSlice({
   name: 'spaces',
-  initialState: { spaces: localSpaces(), selectedSpace: null, status: 'succeeded', error: null },
+  initialState: { spaces: [], selectedSpace: null, status: 'idle', error: null },
   reducers: { clearSelectedSpace: (state) => { state.selectedSpace = null; } },
   extraReducers: (builder) => builder
     .addCase(fetchSpaces.pending, (state) => { state.status = 'loading'; state.error = null; })
     .addCase(fetchSpaces.fulfilled, (state, action) => { state.status = 'succeeded'; state.spaces = action.payload; })
-    .addCase(fetchSpaces.rejected, (state, action) => { state.status = 'rejected'; state.error = action.error.message; })
+    .addCase(fetchSpaces.rejected, (state, action) => { state.status = 'rejected'; state.error = action.payload || action.error.message; })
     .addCase(fetchSpaceById.fulfilled, (state, action) => { state.status = 'succeeded'; state.selectedSpace = action.payload; })
     .addCase(createSpace.fulfilled, (state, action) => { state.spaces.push(action.payload); })
     .addCase(saveSpace.fulfilled, (state, action) => { const index = state.spaces.findIndex((space) => String(space.id) === String(action.payload.id)); if (index >= 0) state.spaces[index] = action.payload; })

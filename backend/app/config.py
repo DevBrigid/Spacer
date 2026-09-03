@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     jwt_secret: str
     cors_origins: str = ""
 
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    supabase_storage_bucket: str = "space-images"
+
     daraja_consumer_key: str
     daraja_consumer_secret: str
     daraja_shortcode: str
@@ -27,6 +32,17 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def supabase_is_configured(self) -> bool:
+        """True only when real server-side Supabase credentials are available."""
+        return bool(
+            self.supabase_url.startswith("https://")
+            and ".supabase.co" in self.supabase_url
+            and self.supabase_service_role_key
+            and "your_" not in self.supabase_service_role_key
+            and "<your-" not in self.supabase_url
+        )
 
 
 settings = Settings()
