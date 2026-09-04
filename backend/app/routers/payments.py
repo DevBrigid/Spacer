@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,6 +14,7 @@ from app.utils.validators import normalize_phone_number
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 PENDING_PAYMENT_RETRY_AFTER = timedelta(minutes=3)
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=list[PaymentResponse], summary="List payments (admin only)")
@@ -101,18 +103,20 @@ def get_booking_payment(booking_id: int, current_user=Depends(get_current_user),
 
 @router.post("/callback", summary="Daraja STK push callback (webhook)")
 async def daraja_callback(payload: dict, db: Session = Depends(get_db)):
-    print("=== DARAJA CALLBACK RECEIVED ===")
-    print(payload)
-
     stk_callback = payload.get("Body", {}).get("stkCallback", {})
     checkout_request_id = stk_callback.get("CheckoutRequestID")
     result_code_raw = stk_callback.get("ResultCode")
-    result_code = int(str(result_code_raw).strip()) if str(result_code_raw).strip() else None
+    try:
+        result_code = int(str(result_code_raw).strip()) if str(result_code_raw).strip() else None
+    except (TypeError, ValueError):
+        logger.warning("Ignoring Daraja callback with an invalid result code")
+        return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
     if checkout_request_id is None:
         checkout_request_id = payload.get("CheckoutRequestID") or payload.get("checkoutRequestId")
 
     if checkout_request_id is None:
+        logger.warning("Ignoring Daraja callback without a checkout request ID")
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
     payment = db.query(Payment).filter(Payment.checkout_request_id == checkout_request_id).first()
@@ -121,6 +125,7 @@ async def daraja_callback(payload: dict, db: Session = Depends(get_db)):
         if merchant_request_id:
             payment = db.query(Payment).filter(Payment.merchant_request_id == merchant_request_id).first()
         if payment is None:
+            logger.warning("Ignoring Daraja callback for an unknown payment")
             return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
     if result_code == 0:

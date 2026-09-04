@@ -181,6 +181,30 @@ def test_supabase_password_update_service_uses_email_lookup(monkeypatch):
     assert calls[1][2] == {"password": "new-pass-123"}
 
 
+def test_supabase_user_email_update_and_delete_use_the_matching_identity(monkeypatch):
+    from app.services import supabase_auth_service
+
+    calls = []
+
+    def fake_request(path, *, method="GET", token=None, payload=None):
+        calls.append((path, method, payload))
+        if path == "/auth/v1/admin/users?email=old%40example.com":
+            return {"users": [{"id": "supabase-user-123"}]}
+        return {"id": "supabase-user-123"}
+
+    monkeypatch.setattr(supabase_auth_service, "_request", fake_request)
+
+    supabase_auth_service.update_user_email_by_email("old@example.com", "new@example.com")
+    supabase_auth_service.delete_user_by_email("old@example.com")
+
+    assert calls[1] == (
+        "/auth/v1/admin/users/supabase-user-123",
+        "PUT",
+        {"email": "new@example.com", "email_confirm": True},
+    )
+    assert calls[3] == ("/auth/v1/admin/users/supabase-user-123", "DELETE", None)
+
+
 def test_supabase_registration_persists_local_user(db, monkeypatch):
     import importlib
 
@@ -224,6 +248,33 @@ def test_space_schema_accepts_frontend_payload_shape(db):
 
     assert space.name == "Horizon Room"
     assert space.price_per_hour == 3000
+
+
+def test_admin_space_status_is_persisted(db):
+    from app.models.user import User
+    from app.routers.spaces import create_space
+    from app.schemas.space import SpaceCreate
+
+    admin = User(full_name="Admin", email="space-admin@example.com", hashed_password="hashed", role="admin")
+    db.add(admin)
+    db.commit()
+    db.refresh(admin)
+
+    space = create_space(
+        SpaceCreate(
+            name="Booked room",
+            description="Already reserved",
+            location="Nairobi",
+            capacity=8,
+            pricePerHour=2500,
+            status="Booked",
+        ),
+        admin,
+        db,
+    )
+
+    assert space["status"] == "booked"
+    assert space["is_available"] is False
 
 
 def test_daraja_callback_updates_payment_and_booking_when_metadata_is_single_object(db):

@@ -72,6 +72,19 @@ def create_user(*, email: str, password: str, full_name: str, phone_number: str 
     )
 
 
+def _get_user_id_by_email(email: str) -> str:
+    """Return the Supabase Auth ID for a locally known email address."""
+    normalized_email = (email or "").strip().lower()
+    if not normalized_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
+
+    users_response = _request(f"/auth/v1/admin/users?email={quote(normalized_email)}", method="GET")
+    users = users_response.get("users") if isinstance(users_response, dict) else []
+    if not users or not users[0].get("id"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supabase user not found")
+    return users[0]["id"]
+
+
 def update_user_password_by_email(email: str, password: str) -> dict:
     """Update a Supabase Auth user password by email using the service-role key."""
     normalized_email = (email or "").strip().lower()
@@ -80,17 +93,29 @@ def update_user_password_by_email(email: str, password: str) -> dict:
     if not password or len(password.strip()) < 8:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters long")
 
-    users_response = _request(f"/auth/v1/admin/users?email={quote(normalized_email)}", method="GET")
-    users = users_response.get("users") if isinstance(users_response, dict) else []
-    if not users:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supabase user not found")
-
-    user_id = users[0].get("id")
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supabase user id not found")
+    user_id = _get_user_id_by_email(normalized_email)
 
     return _request(
         f"/auth/v1/admin/users/{user_id}",
         method="PUT",
         payload={"password": password},
     )
+
+
+def update_user_email_by_email(current_email: str, new_email: str) -> dict:
+    """Keep the Supabase login email aligned with the local user record."""
+    normalized_new_email = (new_email or "").strip().lower()
+    if not normalized_new_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
+    user_id = _get_user_id_by_email(current_email)
+    return _request(
+        f"/auth/v1/admin/users/{user_id}",
+        method="PUT",
+        payload={"email": normalized_new_email, "email_confirm": True},
+    )
+
+
+def delete_user_by_email(email: str) -> dict:
+    """Delete a Supabase identity before removing its local user record."""
+    user_id = _get_user_id_by_email(email)
+    return _request(f"/auth/v1/admin/users/{user_id}", method="DELETE")

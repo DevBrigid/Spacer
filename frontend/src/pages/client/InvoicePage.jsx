@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPaymentByBookingId } from '../../store/paymentsSlice';
+import { fetchBookings, updateBookingStatus } from '../../store/bookingsSlice';
 
 const formatPrice = (price) => new Intl.NumberFormat('en-KE').format(price || 0);
 
@@ -58,14 +59,23 @@ export default function InvoicePage() {
       try {
         const result = await dispatch(fetchPaymentByBookingId(booking.activeBookingId)).unwrap();
         const paymentStatus = String(result?.status || '').toLowerCase();
-        if (paymentStatus === 'completed' || paymentStatus === 'failed') {
+        if (paymentStatus === 'completed') {
+          // The Daraja callback has committed the booking confirmation. Keep
+          // the client booking list in sync without waiting for a page reload.
+          dispatch(updateBookingStatus({ id: booking.activeBookingId, status: 'confirmed' }));
+          dispatch(fetchBookings());
+          return;
+        }
+        if (paymentStatus === 'failed') {
           return;
         }
       } catch {
         return;
       }
 
-      timeoutId = setTimeout(pollPayment, 5000);
+      // The callback is server-side; short polling makes its confirmed state
+      // visible to the customer as soon as it is committed.
+      timeoutId = setTimeout(pollPayment, 1000);
     };
 
     pollPayment();

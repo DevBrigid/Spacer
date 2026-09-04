@@ -27,6 +27,11 @@ def _space_status(space: Space) -> str:
 	return "available"
 
 
+def _is_available_from_status(status_value: str | None) -> bool:
+	"""Translate the admin form's human-readable status into the DB flag."""
+	return str(status_value or "available").strip().lower() in {"available", "active", "open"}
+
+
 def _space_images(space: Space):
 	if isinstance(getattr(space, "images", None), list) and space.images:
 		return space.images
@@ -125,7 +130,7 @@ def create_space(space_in: SpaceCreate, current_admin=Depends(get_current_admin)
 		image_url=image_url or getattr(space_in, 'image_url', None),
 		latitude=latitude,
 		longitude=longitude,
-		is_available=True,
+		is_available=_is_available_from_status(space_in.status),
 	)
 	db.add(space)
 	db.commit()
@@ -166,11 +171,13 @@ def update_space(space_id: int, space_in: SpaceUpdate, current_admin=Depends(get
 	elif getattr(space_in, 'latitude', None) is not None or getattr(space_in, 'longitude', None) is not None:
 		space.latitude = getattr(space_in, 'latitude', space.latitude)
 		space.longitude = getattr(space_in, 'longitude', space.longitude)
-	for key, val in space_in.dict(exclude_unset=True, by_alias=True).items():
-		if key in {"coordinates", "latitude", "longitude"}:
+	for key, val in space_in.model_dump(exclude_unset=True, by_alias=True).items():
+		if key in {"coordinates", "latitude", "longitude", "status"}:
 			continue
 		if hasattr(space, key):
 			setattr(space, key, val)
+	if space_in.status is not None:
+		space.is_available = _is_available_from_status(space_in.status)
 	if hasattr(space_in, 'images') and space_in.images:
 		space.image_url = space_in.images[0]
 	db.commit()

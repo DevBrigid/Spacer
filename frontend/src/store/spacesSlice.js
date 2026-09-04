@@ -66,33 +66,33 @@ export const fetchSpaceById = createAsyncThunk('spaces/fetchOne', async (id, { r
   }
 });
 
-export const createSpace = createAsyncThunk('spaces/create', async (space, { rejectWithValue }) => {
+export const createSpace = createAsyncThunk('spaces/create', async (space, { getState, rejectWithValue }) => {
   try {
     const data = await apiFetch('/spaces/', {
       method: 'POST',
       body: JSON.stringify(toApiSpace(space)),
-    });
+    }, getState().auth.token);
     return normalizeSpace(data);
   } catch (error) {
     return rejectWithValue(error.message);
   }
 });
 
-export const saveSpace = createAsyncThunk('spaces/save', async ({ id, ...space }, { rejectWithValue }) => {
+export const saveSpace = createAsyncThunk('spaces/save', async ({ id, ...space }, { getState, rejectWithValue }) => {
   try {
     const data = await apiFetch(`/spaces/${id}`, {
       method: 'PUT',
       body: JSON.stringify(toApiSpace(space)),
-    });
+    }, getState().auth.token);
     return normalizeSpace(data);
   } catch (error) {
     return rejectWithValue(error.message);
   }
 });
 
-export const removeSpace = createAsyncThunk('spaces/remove', async (id, { rejectWithValue }) => {
+export const removeSpace = createAsyncThunk('spaces/remove', async (id, { getState, rejectWithValue }) => {
   try {
-    await apiFetch(`/spaces/${id}`, { method: 'DELETE' });
+    await apiFetch(`/spaces/${id}`, { method: 'DELETE' }, getState().auth.token);
     return id;
   } catch (error) {
     return rejectWithValue(error.message);

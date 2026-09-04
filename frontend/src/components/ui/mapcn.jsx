@@ -1,6 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
-  forwardRef,
   useContext,
   useEffect,
   useMemo,
@@ -28,26 +28,29 @@ function Map({
   scrollZoom = true,
   style,
   className = '',
-  ...mapOptions
-}, ref) {
+}) {
   const containerRef = useRef(null);
   const [map, setMap] = useState(null);
+  const initialMapOptions = useRef({ center, zoom, scrollZoom, style });
 
   useEffect(() => {
     if (!containerRef.current) return undefined;
 
     const mapInstance = new maplibregl.Map({
       container: containerRef.current,
-      style: style || 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-      center,
-      zoom,
-      scrollZoom,
-      ...mapOptions,
+      style: initialMapOptions.current.style || 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      center: initialMapOptions.current.center,
+      zoom: initialMapOptions.current.zoom,
+      scrollZoom: initialMapOptions.current.scrollZoom,
     });
 
-    setMap(mapInstance);
+    // Mark the map ready only after its style has loaded. Route layers cannot
+    // be added safely before this point.
+    const handleLoad = () => setMap(mapInstance);
+    mapInstance.once('load', handleLoad);
 
     return () => {
+      mapInstance.off('load', handleLoad);
       mapInstance.remove();
       setMap(null);
     };
@@ -69,7 +72,6 @@ function Map({
   );
 }
 
-export const MapComponent = forwardRef(Map);
 export { Map };
 
 export function MarkerContent({ children, className = '' }) {
@@ -99,41 +101,40 @@ export function MapMarker({
   children,
   draggable = false,
   onDragEnd,
-  ...markerOptions
 }) {
   const { map } = useMap();
-  const markerRef = useRef(null);
+  const [marker, setMarker] = useState(null);
 
   useEffect(() => {
     if (!map) return undefined;
 
-    const marker = new maplibregl.Marker({
+    const markerInstance = new maplibregl.Marker({
       draggable,
-      ...markerOptions,
       element: document.createElement('div'),
     })
       .setLngLat([longitude, latitude]);
 
     const handleDragEnd = () => {
-      const lngLat = marker.getLngLat();
+      const lngLat = markerInstance.getLngLat();
       onDragEnd?.({ lat: lngLat.lat, lng: lngLat.lng });
     };
 
-    marker.on('dragend', handleDragEnd);
-    marker.addTo(map);
-    markerRef.current = marker;
+    markerInstance.on('dragend', handleDragEnd);
+    markerInstance.addTo(map);
+    // State triggers a render after the MapLibre marker exists, allowing
+    // MarkerContent to portal its visual pin into the marker element. Queue
+    // it after the external map mutation to avoid a synchronous effect update.
+    const frameId = requestAnimationFrame(() => setMarker(markerInstance));
 
     return () => {
-      marker.off('dragend', handleDragEnd);
-      marker.remove();
-      markerRef.current = null;
+      cancelAnimationFrame(frameId);
+      markerInstance.off('dragend', handleDragEnd);
+      markerInstance.remove();
     };
   }, [map, longitude, latitude, draggable, onDragEnd]);
 
-  const markerValue = markerRef.current;
-
   return (
-    <MarkerContext.Provider value={{ marker: markerValue }}>
+    <MarkerContext.Provider value={{ marker }}>
       {children}
     </MarkerContext.Provider>
   );

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -11,6 +11,7 @@ class BookingCreate(BaseModel):
     total_amount: float = Field(..., alias="totalAmount")
 
 class BookingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     id: int
     user_id: int = Field(..., alias="userId")
     client: Optional[str] = "Spacer Client"
@@ -22,7 +23,3 @@ class BookingResponse(BaseModel):
     status: str
     payment_status: Optional[str] = Field(None, alias="paymentStatus")
     created_at: datetime
-
-    class Config:
-        from_attributes = True
-        populate_by_name = True

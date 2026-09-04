@@ -32,6 +32,7 @@ class SpaceBase(BaseModel):
 
 class SpaceCreate(SpaceBase):
     images: Optional[List[str]] = []
+    status: Optional[str] = "available"
 
 
 class SpaceUpdate(BaseModel):
@@ -54,6 +55,10 @@ class SpaceUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     coordinates: Optional[CoordinatesSchema] = None
+    # The image is stored as a URL after the admin upload completes.  Accept it
+    # on edits as well as on creates so a replacement is persisted.
+    images: Optional[List[str]] = None
+    image_url: Optional[str] = None
 
 
 class SpaceResponse(SpaceBase):
