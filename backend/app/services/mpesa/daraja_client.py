@@ -4,6 +4,11 @@ import requests
 from app.config import settings
 
 
+def _daraja_timeout() -> tuple[float, float]:
+    """Prevent a slow provider from leaving the checkout request open forever."""
+    return (settings.daraja_connect_timeout_seconds, settings.daraja_read_timeout_seconds)
+
+
 def get_access_token() -> str:
     credentials = f"{settings.daraja_consumer_key}:{settings.daraja_consumer_secret}"
     encoded_credentials = base64.b64encode(credentials.encode()).decode()
@@ -11,6 +16,7 @@ def get_access_token() -> str:
     response = requests.get(
         f"{settings.daraja_base_url}/oauth/v1/generate?grant_type=client_credentials",
         headers={"Authorization": f"Basic {encoded_credentials}"},
+        timeout=_daraja_timeout(),
     )
     response.raise_for_status()
     return response.json()["access_token"]
@@ -52,6 +58,7 @@ def initiate_stk_push(phone_number: str, amount: float, account_reference: str) 
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
+        timeout=_daraja_timeout(),
     )
     response.raise_for_status()
     return response.json()

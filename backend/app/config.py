@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     daraja_passkey: str
     daraja_callback_url: str
     daraja_base_url: str = "https://sandbox.safaricom.co.ke"
+    daraja_connect_timeout_seconds: float = 10.0
+    daraja_read_timeout_seconds: float = 30.0
 
     model_config = SettingsConfigDict(
         env_file=(_REPO_ROOT / ".env", _BACKEND_DIR / ".env"),

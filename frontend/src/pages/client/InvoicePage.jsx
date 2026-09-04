@@ -70,7 +70,8 @@ export default function InvoicePage() {
           return;
         }
       } catch {
-        return;
+        // A brief network/API interruption must not leave the receipt page
+        // polling forever in a stale pending state. Try again shortly.
       }
 
       // The callback is server-side; short polling makes its confirmed state
@@ -86,8 +87,10 @@ export default function InvoicePage() {
     };
   }, [booking.activeBookingId, dispatch]);
 
-  const hasPaymentRecord = ['success', 'completed', 'pending'].includes(String(payment.status || '').toLowerCase());
-  const paymentIsComplete = ['success', 'completed'].includes(String(payment.status || '').toLowerCase());
+  const normalizedPaymentStatus = String(payment.status || '').toLowerCase();
+  const hasPaymentRecord = ['success', 'completed', 'pending', 'failed'].includes(normalizedPaymentStatus);
+  const paymentIsComplete = ['success', 'completed'].includes(normalizedPaymentStatus);
+  const paymentFailed = normalizedPaymentStatus === 'failed';
 
   if (!hasPaymentRecord || (!booking.selectedSpaceId && !booking.spaceName)) {
     return (
@@ -109,16 +112,18 @@ export default function InvoicePage() {
       <section className="border border-stone-200 bg-white p-6 shadow-sm md:p-10">
         <div className="flex flex-col justify-between gap-5 border-b border-stone-200 pb-6 sm:flex-row">
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${paymentIsComplete ? 'text-emerald-700' : 'text-amber-700'}`}>
-              {paymentIsComplete ? 'Payment received' : 'Payment pending'}
+            <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${paymentIsComplete ? 'text-emerald-700' : paymentFailed ? 'text-red-700' : 'text-amber-700'}`}>
+              {paymentIsComplete ? 'Payment received' : paymentFailed ? 'Payment failed' : 'Payment pending'}
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-              {paymentIsComplete ? 'Your Spacer invoice' : 'Complete your M-Pesa payment'}
+              {paymentIsComplete ? 'Your Spacer invoice' : paymentFailed ? 'Your M-Pesa payment was not completed' : 'Complete your M-Pesa payment'}
             </h1>
             <p className="mt-2 text-sm text-stone-500">
               {paymentIsComplete
                 ? 'A copy of this receipt is available here whenever you need it.'
-                : 'The M-Pesa prompt was sent to your phone. We are checking the payment status automatically.'}
+                : paymentFailed
+                  ? 'No payment was confirmed. Return to your bookings to send a new M-Pesa prompt.'
+                  : 'The M-Pesa prompt was sent to your phone. We are checking the payment status automatically.'}
             </p>
           </div>
           <div className="text-sm sm:text-right">
@@ -132,6 +137,11 @@ export default function InvoicePage() {
               >
                 Download invoice
               </button>
+            )}
+            {paymentFailed && (
+              <Link to="/spacer/bookings" className="mt-3 inline-flex rounded-md bg-stone-900 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-stone-700">
+                Try payment again
+              </Link>
             )}
           </div>
         </div>
