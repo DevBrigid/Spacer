@@ -10,7 +10,9 @@ from app.models.booking import Booking
 from app.schemas.user import UserResponse, AdminUserCreate
 from app.schemas.space import SpaceResponse, SpaceCreate
 from app.schemas.booking import BookingResponse
+from app.schemas.admin import AdminUserUpdate
 from app.core.security import hash_password
+from app.services import supabase_auth_service
 import datetime
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
@@ -72,9 +74,17 @@ def create_user(user_in: AdminUserCreate, db: Session = Depends(get_db)):
 
     role = user_in.role if user_in.role in ("client", "admin") else "client"
 
+    # Provision the identity first. If this fails, no local account is created.
+    supabase_auth_service.create_user(
+        email=user_in.email.strip().lower(),
+        password=user_in.password,
+        full_name=user_in.name,
+        phone_number=user_in.phone_number,
+    )
+
     user = User(
         full_name=user_in.name,
-        email=user_in.email,
+        email=user_in.email.strip().lower(),
         hashed_password=hash_password(user_in.password),
         phone_number=user_in.phone_number,
         role=role,
@@ -86,23 +96,52 @@ def create_user(user_in: AdminUserCreate, db: Session = Depends(get_db)):
 
 
 @router.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
                 raise HTTPException(status_code=404, detail="User not found")
+        if user.id == current_admin.id:
+                raise HTTPException(status_code=400, detail="You cannot delete your own active admin account")
+        # If Supabase rejects this operation, leave the local user untouched so
+        # the two identity stores cannot get out of sync.
+        supabase_auth_service.delete_user_by_email(user.email)
         db.delete(user)
         db.commit()
         return {"status": "deleted"}
 
 
-@router.put("/users/{user_id}/role")
-def update_user_role(user_id: int, payload: dict, db: Session = Depends(get_db)):
+@router.put("/users/{user_id}")
+def update_user_details(user_id: int, payload: AdminUserUpdate, db: Session = Depends(get_db)):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
                 raise HTTPException(status_code=404, detail="User not found")
-        if "role" in payload:
-                role = payload["role"] if payload["role"] in ("client", "admin") else "client"
-                user.role = role
+
+        updates = {}
+        if payload.name is not None:
+                updates["full_name"] = payload.name.strip()
+        if payload.email is not None:
+                email = str(payload.email).strip().lower()
+                existing = db.query(User).filter(User.email == email, User.id != user_id).first()
+                if existing:
+                        raise HTTPException(status_code=409, detail="Email already registered")
+                if email != user.email:
+                        # Complete the remote update before changing the local
+                        # record; failed remote requests must not break login.
+                        supabase_auth_service.update_user_email_by_email(user.email, email)
+                updates["email"] = email
+        if payload.phone_number is not None:
+                updates["phone_number"] = payload.phone_number
+        if payload.role is not None:
+                role = payload.role if payload.role in ("client", "admin") else "client"
+                updates["role"] = role
+
+        for key, value in updates.items():
+                setattr(user, key, value)
+
         db.commit()
         db.refresh(user)
         return {"status": "ok", "user": user}

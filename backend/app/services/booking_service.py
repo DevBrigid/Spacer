@@ -37,6 +37,21 @@ def create_booking(db: Session, booking_data: dict) -> Booking:
 	if end_dt <= start_dt:
 		raise HTTPException(status_code=400, detail="end_time must be after start_time")
 
+	space_id = data.get("space_id")
+	if space_id is not None:
+		overlap = (
+			db.query(Booking)
+			.filter(
+				Booking.space_id == space_id,
+				Booking.status.in_(["pending", "confirmed"]),
+				Booking.start_time < end_dt,
+				Booking.end_time > start_dt,
+			)
+			.first()
+		)
+		if overlap:
+			raise HTTPException(status_code=409, detail="This time is already booked for this space. Please choose another time.")
+
 	# Use datetime objects so SQLAlchemy receives proper types
 	data["start_time"] = start_dt
 	data["end_time"] = end_dt

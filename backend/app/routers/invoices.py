@@ -18,7 +18,7 @@ def download_invoice(booking_id: int, current_user=Depends(get_current_user), db
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.user_id != current_user.id and not current_user.is_admin:
+    if booking.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to access this invoice")
 
     payment = db.query(Payment).filter(Payment.booking_id == booking_id).first()
@@ -44,7 +44,7 @@ def get_invoice(invoice_id: int, current_user=Depends(get_current_user), db: Ses
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     booking = db.query(Booking).filter(Booking.id == invoice.booking_id).first()
-    if booking.user_id != current_user.id and not current_user.is_admin:
+    if booking.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to access this invoice")
 
     data = build_invoice_data(db, invoice.booking_id)

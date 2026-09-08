@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import mockDatabase from '../../database/db.json';
 import { setBookingDetails } from '../../store/bookingsSlice';
 import { assertTimeSlotAvailable } from '../../utils/bookingAvailability';
+import { apiFetch } from '../../utils/api';
 
 const formatPrice = (price) => new Intl.NumberFormat('en-KE').format(price || 0);
 
@@ -12,16 +12,28 @@ function BookingPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const space = mockDatabase.spaces.find((item) => String(item.id) === String(spacerId));
+  const [space, setSpace] = useState(null);
   const [startTime, setStartTime] = useState(location.state?.startTime || '');
   const [endTime, setEndTime] = useState(location.state?.endTime || '');
   const [availabilityError, setAvailabilityError] = useState('');
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  useEffect(() => {
+    async function loadSpace() {
+      try {
+        const data = await apiFetch(`/spaces/${spacerId}`);
+        setSpace(data);
+      } catch {
+        setSpace(null);
+      }
+    }
+    if (spacerId) loadSpace();
+  }, [spacerId]);
+
   const durationHours = useMemo(() => {
     const duration = (new Date(endTime) - new Date(startTime)) / 3_600_000;
     return startTime && endTime && duration > 0 ? duration : 0;
   }, [endTime, startTime]);
-  const total = durationHours * (space?.price_per_hour || 0);
+  const total = durationHours * (Number(space?.pricePerHour ?? space?.price_per_hour ?? 0));
 
   if (!space) return <main className="mx-auto max-w-3xl px-6 py-16"><p className="text-sm text-stone-600">This space is no longer available.</p><Link to="/spaces" className="mt-4 inline-block text-sm font-medium underline underline-offset-4">Browse spaces</Link></main>;
 
@@ -32,7 +44,7 @@ function BookingPage() {
     setAvailabilityError('');
     try {
       await assertTimeSlotAvailable(space.id, startTime, endTime);
-      dispatch(setBookingDetails({ spaceId: space.id, startTime, endTime, pricePerHour: space.price_per_hour }));
+      dispatch(setBookingDetails({ spaceId: space.id, startTime, endTime, pricePerHour: space.pricePerHour ?? space.price_per_hour ?? 0 }));
       navigate('/spacer/payment');
     } catch (error) {
       setAvailabilityError(error.message);

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
   addUser,
   deleteUser,
-  toggleUserStatus,
+  fetchUsers,
+  updateUserDetails,
 } from "../../store/adminSlice";
 
 function ManageUsers() {
@@ -12,18 +13,27 @@ function ManageUsers() {
 
   const users = useSelector((state) => state.admin.users);
 
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
   const [showForm, setShowForm] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone_number: "", role: "client" });
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "Client",
-    status: "Active",
+    password: "",
+    phone_number: "",
+    role: "client",
   });
 
   const filteredUsers = users.filter((user) =>
-    `${user.name} ${user.email}`
+    `${user.name || ''} ${user.email || ''}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -35,19 +45,48 @@ function ManageUsers() {
     });
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleEditClick = (user) => {
+    setEditingUserId(user.id);
+    setEditForm({
+      name: user.name || "",
+      email: user.email || "",
+      phone_number: user.phone_number || "",
+      role: user.role || "client",
+    });
+  };
 
-    dispatch(addUser(formData));
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+    const result = await dispatch(updateUserDetails({
+      userId: editingUserId,
+      userData: editForm,
+    }));
+
+    if (updateUserDetails.fulfilled.match(result)) {
+      setEditingUserId(null);
+      setEditForm({ name: "", email: "", phone_number: "", role: "client" });
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setFormError("");
+    setFormSuccess("");
+    const result = await dispatch(addUser(formData));
+    if (!addUser.fulfilled.match(result)) {
+      setFormError(result.payload || "Could not create the user.");
+      return;
+    }
 
     setFormData({
       name: "",
       email: "",
-      role: "Client",
-      status: "Active",
+      password: "",
+      phone_number: "",
+      role: "client",
     });
 
-    setShowForm(false);
+    setFormSuccess("User created successfully. You can add another user below.");
   };
 
   return (
@@ -58,9 +97,15 @@ function ManageUsers() {
           <p>View and manage Spacer users.</p>
         </div>
 
-        <button className="primary-button" onClick={() => setShowForm(true)}>
-          + Add User
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button className="primary-button" onClick={() => {
+            setFormError("");
+            setFormSuccess("");
+            setShowForm(true);
+          }}>
+            + Add User
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -68,15 +113,17 @@ function ManageUsers() {
           <div className="form-header">
             <div>
               <h2>Add User</h2>
-              <p>Create a new platform user.</p>
+              <p>Create a new platform user and set their initial password.</p>
             </div>
 
-            <button className="close-button" onClick={() => setShowForm(false)}>
+            <button type="button" className="close-button" onClick={() => setShowForm(false)}>
               ×
             </button>
           </div>
 
           <form onSubmit={handleSubmit}>
+            {formError && <p className="mb-4 text-sm text-red-600" role="alert">{formError}</p>}
+            {formSuccess && <p className="mb-4 text-sm text-emerald-700" role="status">{formSuccess}</p>}
             <div className="form-grid">
               <div className="input-group">
                 <label>Full Name</label>
@@ -101,10 +148,32 @@ function ManageUsers() {
               </div>
 
               <div className="input-group">
+                <label>Initial Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Phone Number</label>
+                <input
+                  type="tel"
+                  name="phone_number"
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  placeholder="+254 7XX XXX XXX"
+                />
+              </div>
+
+              <div className="input-group">
                 <label>Role</label>
                 <select name="role" value={formData.role} onChange={handleChange}>
-                  <option value="Client">Client</option>
-                  <option value="Admin">Admin</option>
+                  <option value="client">Client</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
             </div>
@@ -156,43 +225,102 @@ function ManageUsers() {
 
             <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td>
-                    <strong>{user.name}</strong>
-                  </td>
+                editingUserId === user.id ? (
+                  <tr key={user.id}>
+                    <td colSpan="5">
+                      <form onSubmit={handleEditSubmit} className="form-card" style={{ margin: 0 }}>
+                        <div className="form-grid">
+                          <div className="input-group">
+                            <label>Full Name</label>
+                            <input
+                              type="text"
+                              value={editForm.name}
+                              onChange={(event) => setEditForm({ ...editForm, name: event.target.value })}
+                              required
+                            />
+                          </div>
 
-                  <td>{user.email}</td>
+                          <div className="input-group">
+                            <label>Email</label>
+                            <input
+                              type="email"
+                              value={editForm.email}
+                              onChange={(event) => setEditForm({ ...editForm, email: event.target.value })}
+                              required
+                            />
+                          </div>
 
-                  <td>{user.role}</td>
+                          <div className="input-group">
+                            <label>Phone Number</label>
+                            <input
+                              type="tel"
+                              value={editForm.phone_number}
+                              onChange={(event) => setEditForm({ ...editForm, phone_number: event.target.value })}
+                            />
+                          </div>
 
-                  <td>
-                    <span
-                      className={
-                        user.status === "Active"
-                          ? "status available"
-                          : "status inactive"
-                      }
-                    >
-                      {user.status}
-                    </span>
-                  </td>
+                          <div className="input-group">
+                            <label>Role</label>
+                            <select
+                              value={editForm.role}
+                              onChange={(event) => setEditForm({ ...editForm, role: event.target.value })}
+                            >
+                              <option value="client">Client</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </div>
+                        </div>
 
-                  <td>
-                    <button
-                      className="table-button"
-                      onClick={() => dispatch(toggleUserStatus(user.id))}
-                    >
-                      {user.status === "Active" ? "Deactivate" : "Activate"}
-                    </button>
+                        <div className="form-buttons">
+                          <button type="button" className="secondary-button" onClick={() => setEditingUserId(null)}>
+                            Cancel
+                          </button>
+                          <button type="submit" className="primary-button">
+                            Save Changes
+                          </button>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={user.id}>
+                    <td>
+                      <strong>{user.name}</strong>
+                    </td>
 
-                    <button
-                      className="delete-button"
-                      onClick={() => dispatch(deleteUser(user.id))}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
+                    <td>{user.email}</td>
+
+                    <td>{String(user.role || 'client').charAt(0).toUpperCase() + String(user.role || 'client').slice(1)}</td>
+
+                    <td>
+                      <span
+                        className={
+                          String(user.status || 'Active') === "Active"
+                            ? "status available"
+                            : "status inactive"
+                        }
+                      >
+                        {user.status || 'Active'}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button
+                        className="table-button"
+                        onClick={() => handleEditClick(user)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="delete-button"
+                        onClick={() => dispatch(deleteUser(user.id))}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
               ))}
             </tbody>
           </table>

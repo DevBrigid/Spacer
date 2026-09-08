@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
   createSpace,
+  fetchSpaces,
   saveSpace,
   removeSpace,
 } from "../../store/spacesSlice";
@@ -11,11 +12,15 @@ import LocationPicker from "../../components/LocationPicker";
 function ManageSpaces() {
 
   const dispatch = useDispatch();
+  const token = useSelector((state) => state.auth.token);
 
   const spaces = useSelector(
     (state) => state.spaces.spaces
   );
 
+  useEffect(() => {
+    dispatch(fetchSpaces());
+  }, [dispatch]);
 
   const [showForm, setShowForm] = useState(false);
 
@@ -26,6 +31,7 @@ function ManageSpaces() {
   const [formData, setFormData] = useState({
     name: "",
     location: "",
+    imageFile: null,
     imageUrl: "",
     latitude: "",
     longitude: "",
@@ -60,6 +66,7 @@ function ManageSpaces() {
     setFormData({
       name: "",
       location: "",
+      imageFile: null,
       imageUrl: "",
       latitude: "",
       longitude: "",
@@ -90,23 +97,46 @@ function ManageSpaces() {
       return;
     }
 
-
-    const space = {
-
-      ...formData,
-
-      pricePerHour:
-        Number(formData.pricePerHour),
-
-      capacity:
-        Number(formData.capacity),
-
-      latitude: Number(formData.latitude),
-      longitude: Number(formData.longitude),
-    };
-
-
     try {
+      let finalImageUrl = formData.imageUrl || "";
+
+      if (!token) {
+        throw new Error('Your admin session has expired. Please sign in again.');
+      }
+
+      if (formData.imageFile) {
+        const uploadForm = new FormData();
+        uploadForm.append('file', formData.imageFile);
+
+        const uploadResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/spaces/upload-image`, {
+          method: 'POST',
+          body: uploadForm,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(errorData.detail || 'Image upload failed.');
+        }
+
+        const uploadData = await uploadResponse.json();
+        finalImageUrl = uploadData.url;
+      }
+
+      const space = {
+        ...formData,
+        imageUrl: finalImageUrl,
+        images: finalImageUrl ? [finalImageUrl] : [],
+        pricePerHour: Number(formData.pricePerHour),
+        capacity: Number(formData.capacity),
+        latitude: Number(formData.latitude),
+        longitude: Number(formData.longitude),
+      };
+
+      delete space.imageFile;
+
       if (editingSpace) {
         await dispatch(saveSpace({ id: editingSpace.id, ...space })).unwrap();
       } else {
@@ -114,7 +144,7 @@ function ManageSpaces() {
       }
       resetForm();
     } catch (error) {
-      setFormError(error || "The space could not be saved.");
+      setFormError(error?.message || error || "The space could not be saved.");
     }
 
   };
@@ -341,20 +371,25 @@ function ManageSpaces() {
                 <div className="input-group full">
 
                   <label>
-                    Space image URL
+                    Space image file
                   </label>
 
                   <input
-                    type="url"
-                    name="imageUrl"
-                    value={formData.imageUrl}
-                    onChange={handleChange}
-                    placeholder="https://example.com/your-space-image.jpg"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      setFormData((current) => ({
+                        ...current,
+                        imageFile: file,
+                        imageUrl: file ? URL.createObjectURL(file) : current.imageUrl,
+                      }));
+                    }}
                   />
 
-                  <p className="field-help">Optional. If left blank, Spacer uses a default space image.</p>
+                  <p className="field-help">Upload a JPG, PNG, or WEBP file. The backend stores it in Supabase Storage and returns the public URL.</p>
 
-                  {formData.imageUrl && (
+                  {(formData.imageUrl || formData.imageFile) && (
                     <img
                       src={formData.imageUrl}
                       alt="Space image preview"
