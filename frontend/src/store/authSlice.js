@@ -12,54 +12,51 @@ const publicUser = (user) => {
 };
 
 export const registerUser = createAsyncThunk(
-    'auth/registerUser',
-    async (userData, { rejectWithValue }) => {
-        try {
-            const response = await apiFetch('/auth/supabase/register', {
-                method: 'POST',
-                body: JSON.stringify({
-                    email: userData.email,
-                    password: userData.password,
-                    name: userData.name || userData.full_name,
-                    phone_number: userData.phone_number || userData.phoneNumber || '',
-                }),
-            });
-
-            if (!response?.access_token) {
-                throw new Error('Registration succeeded but no access token was returned.');
-            }
-
-            return { user: publicUser(response.user), token: response.access_token };
-        } catch (error) {
-            return rejectWithValue(error.message);
-        }
+  'auth/registerUser',
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await apiFetch('/auth/supabase/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          name: userData.name || userData.full_name,
+          phone_number: userData.phone_number || userData.phoneNumber || '',
+        }),
+      });
+      if (!response?.access_token) {
+        throw new Error('Registration succeeded but no access token was returned.');
+      }
+      return { user: publicUser(response.user), token: response.access_token };
+    } catch (error) {
+      return rejectWithValue(error.message);
     }
+  }
 );
 
 export const loginUser = createAsyncThunk(
-    'auth/loginUser',
-    async (credentials, { rejectWithValue }) => {
-        try {
-            assertSupabaseConfigured();
-            if (!credentials?.email || !credentials?.password) {
-                return rejectWithValue('Email and password are required.');
-            }
-
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: credentials.email,
-                password: credentials.password,
-            });
-            if (error) throw error;
-            if (!data.session) throw new Error('Authentication failed: no Supabase session was returned.');
-            const response = await apiFetch('/auth/supabase/session', {
-                method: 'POST',
-                body: JSON.stringify({ access_token: data.session.access_token }),
-            });
-            return { user: publicUser(response.user), token: response.access_token };
-        } catch (error) {
-            return rejectWithValue(error.message);
-        }
+  'auth/loginUser',
+  async (credentials, { rejectWithValue }) => {
+    try {
+      assertSupabaseConfigured();
+      if (!credentials?.email || !credentials?.password) {
+        return rejectWithValue('Email and password are required.');
+      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+      if (error) throw error;
+      if (!data.session) throw new Error('Authentication failed: no Supabase session was returned.');
+      const response = await apiFetch('/auth/supabase/session', {
+        method: 'POST',
+        body: JSON.stringify({ access_token: data.session.access_token }),
+      });
+      return { user: publicUser(response.user), token: response.access_token };
+    } catch (error) {
+      return rejectWithValue(error.message);
     }
+  }
 );
 
 export const requestPasswordReset = createAsyncThunk(
@@ -223,20 +220,20 @@ const authSlice = createSlice({
         //registerUser
         .addCase(registerUser.pending, (state) => {
             state.status = 'pending';
-            state.error = null;
+          state.error = null;
         })
         .addCase(registerUser.fulfilled, (state, action) => {
-            state.status = 'succeeded';
-            state.currentUser = action.payload.user;
-            state.token = action.payload.token;
-            state.isAuthenticated = true;
-            state.authChecked = true;
-            localStorage.setItem('token', action.payload.token);
-            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(action.payload.user));
+          state.status = 'succeeded';
+          state.currentUser = action.payload.user;
+          state.token = action.payload.token;
+          state.isAuthenticated = true;
+          state.authChecked = true;
+          localStorage.setItem('token', action.payload.token);
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(action.payload.user));
         })
         .addCase(registerUser.rejected, (state, action) => {
             state.status = 'rejected';
-            state.error = action.payload;
+          state.error = action.payload;
         })
         //loginUser
         .addCase(loginUser.pending, (state) => {
@@ -245,6 +242,9 @@ const authSlice = createSlice({
         })
         .addCase(loginUser.fulfilled, (state, action) => {
             state.status = 'succeeded';
+            if (action.payload.requiresEmailConfirmation) {
+              return;
+            }
             state.currentUser = action.payload.user;
             state.token = action.payload.token;
             state.isAuthenticated = true;

@@ -1,64 +1,84 @@
 # Spacer
 
-Spacer is a React + Vite frontend application for browsing, booking, and managing shared spaces. This repository contains the frontend application, a simple JSON-based API for local development, and Redux state management for core features.
+Spacer is a booking platform for browsing, listing, and managing shared spaces. The repository contains a React frontend and a FastAPI backend backed by Supabase services.
 
 ## Features
-- Browse public spaces with details and availability
-- User authentication (register/login/forgot password)
-- Client dashboard: book spaces, view bookings, payments, invoices
-- Admin dashboard: manage users, spaces, and view booking history
-- JSON-server-based mock API for local development
+- Browse spaces, availability, and details
+- Register and log in with Supabase Auth
+- Client dashboards for bookings, payments, and invoices
+- Admin dashboards for users, spaces, and booking history
+- Image uploads and M-Pesa payment integration
 
 ## Tech Stack
-- Frontend: React, Vite
-- State management: Redux Toolkit
-- Routing: React Router
-- Mock API: json-server
-- Linting: ESLint
+- Frontend: React, Vite, Redux Toolkit, React Router, MapLibre
+- Backend: FastAPI, SQLAlchemy, Alembic, Python
+- Authentication and storage: Supabase
+- Payments: Safaricom Daraja/M-Pesa
 
 ## Prerequisites
 - Node.js 18+ and npm
+- Python 3.11+ and a virtual environment
+- A Supabase project
 
-## Setup (Local Development)
-1. Clone the repository and install dependencies:
+## Configuration
 
-	npm install
+Copy `backend/.env.example` to either `backend/.env` or the repository root `.env`. The backend loads both locations and requires database, JWT, Supabase, and Daraja settings.
 
-2. Install frontend dependencies (if you open `frontend` and prefer separate install):
+Put browser-safe settings in `frontend/.env`:
 
-	cd frontend
-	npm install
+```env
+VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+VITE_SUPABASE_REDIRECT_URL=http://localhost:5173/auth/callback
+```
 
-3. Start the local development server (runs json-server and vite):
+Never put `SUPABASE_SERVICE_ROLE_KEY` in `frontend/.env` or commit it. The backend uses that key to create confirmed users during registration. Configure the Supabase project URL and redirect URL in the Supabase dashboard as well.
 
-	cd frontend
-	npm run dev
+## Local Development
 
-This runs a mock API at `http://localhost:3001` serving `src/database/db.json` and the Vite dev server (default `http://localhost:5173`).
+Install backend dependencies and start the API:
 
-## Scripts (frontend)
-- `npm run dev` — start json-server and Vite for development
-- `npm run api` — run only the json-server API on port 3001
-- `npm run build` — build the production bundle using Vite
-- `npm run preview` — preview production build locally
-- `npm run lint` — run ESLint
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirement.txt
+uvicorn app.main:app --reload
+```
+
+In a second terminal, install frontend dependencies and start Vite:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The API runs at `http://localhost:8000`. Vite normally runs at `http://localhost:5173`; if that port is busy, use the port Vite prints and add the matching origin to `CORS_ORIGINS` before restarting the backend.
+
+## Frontend Scripts
+- `npm run dev` - start the Vite development server
+- `npm run build` - create the production bundle in `frontend/dist`
+- `npm run preview` - preview the production bundle
+- `npm run lint` - run ESLint
+
+## Backend Checks
+
+Run the backend test suite from `backend` with the virtual environment active:
+
+```bash
+pytest
+```
+
+The API health endpoint is available at `http://localhost:8000/health`.
 
 ## Project Structure
-See the `frontend/src` folder for the application code. Key folders:
-- `components/` — shared UI components (NavBar, AuthShell, ErrorBoundary)
-- `layouts/` — layout components for admin and client
-- `pages/` — routed pages for admin, client, public, and auth flows
-- `store/` — Redux slices and store configuration
-- `database/` — `db.json` for `json-server` mock API
-
-## Mock API
-The mock API uses `json-server` and serves `frontend/src/database/db.json`. The API runs on port `3001` when you run `npm run dev` from `frontend`.
-
-## Environment & Configuration
-No runtime environment variables are required for the mock frontend. If you integrate a real backend later, document required variables here.
-
-## Testing
-No automated tests are included currently. To add tests, consider using `Jest` with `React Testing Library` for component and slice tests.
+- `frontend/src` - React application, pages, components, and Redux state
+- `backend/app` - FastAPI application, routers, services, models, and schemas
+- `backend/migrations` - Alembic migrations
+- `backend/tests` - backend tests
+- `frontend/dist` - generated frontend build output; do not edit manually
 
 ## Contributing
 Contributions are welcome. Please open issues or submit pull requests describing changes and motivation.
