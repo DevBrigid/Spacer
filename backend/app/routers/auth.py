@@ -74,17 +74,29 @@ def register_supabase_user(payload: dict, db: Session = Depends(get_db)):
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
 
+    # 1. Check local database
     existing = db.query(User).filter(User.email == email).first()
     if existing:
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="A user with this email already exists. Please log in.")
 
-    supabase_auth_service.create_user(
-        email=email,
-        password=password,
-        full_name=full_name or email.split("@")[0],
-        phone_number=phone_number,
-    )
+    # 2. Try creating in Supabase Auth
+    try:
+        supabase_auth_service.create_user(
+            email=email,
+            password=password,
+            full_name=full_name or email.split("@")[0],
+            phone_number=phone_number,
+        )
+    except HTTPException as exc:
+        # If Supabase says user already exists, update local DB or tell user to log in
+        if exc.status_code == 422 or "already been registered" in str(exc.detail):
+            raise HTTPException(
+                status_code=409,
+                detail="A user with this email address has already been registered. Please log in."
+            )
+        raise exc
 
+    # 3. Create local user record
     user = User(
         full_name=full_name or email.split("@")[0],
         email=email,
