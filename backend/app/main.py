@@ -10,6 +10,14 @@ from app.database import init_db, get_db
 app = FastAPI()
 
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.on_event("startup")
 def on_startup():
     # Ensure DB tables exist for development
@@ -25,13 +33,6 @@ app.include_router(spaces)
 app.include_router(payments)
 app.include_router(invoices)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/", response_class=HTMLResponse, tags=["landing"])
 def landing_page():
