@@ -13,6 +13,7 @@ env/
 
 # Editor and environment files
 .cursor/
+frontend/dist/
 
 # Environment
 .env
